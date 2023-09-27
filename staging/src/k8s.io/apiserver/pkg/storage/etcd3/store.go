@@ -32,6 +32,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/kubernetes"
 	"go.opentelemetry.io/otel/attribute"
+	"k8s.io/apiserver/pkg/kcp"
 
 	etcdrpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -789,6 +790,7 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 	if err != nil {
 		return storage.NewInternalError(fmt.Errorf("unable to get cluster for list key %q: %v", keyPrefix, err))
 	}
+	crdIndicator := kcp.CustomResourceIndicatorFrom(ctx)
 
 	// loop until we have filled the requested limit from etcd or there are no more results
 	var lastKey []byte
