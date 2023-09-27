@@ -41,7 +41,7 @@ type CustomResourceStorage struct {
 	Scale          *ScaleREST
 }
 
-func NewStorage(resource schema.GroupResource, singularResource schema.GroupResource, kind, listKind schema.GroupVersionKind, strategy customResourceStrategy, optsGetter generic.RESTOptionsGetter, categories []string, tableConvertor rest.TableConvertor, replicasPathMapping managedfields.ResourcePathMappings) (CustomResourceStorage, error) {
+func NewStorage(resource schema.GroupResource, singularResource schema.GroupResource, kind, listKind schema.GroupVersionKind, strategy customResourceStrategy, optsGetter generic.RESTOptionsGetter, categories []string, tableConvertor rest.TableConvertor, replicasPathMapping managedfields.ResourcePathMappings, newStores NewStores) (CustomResourceStorage, error) {
 	var storage CustomResourceStorage
 	store := &genericregistry.Store{
 		NewFunc: func() runtime.Object {
@@ -102,7 +102,7 @@ func NewStorage(resource schema.GroupResource, singularResource schema.GroupReso
 
 // REST implements a RESTStorage for API services against etcd
 type REST struct {
-	*genericregistry.Store
+	Store
 	categories []string
 }
 

@@ -101,6 +101,9 @@ func (m *CRConverterFactory) NewConverter(crd *apiextensionsv1.CustomResourceDef
 		clusterScoped:    crd.Spec.Scope == apiextensionsv1.ClusterScoped,
 		converter:        converter,
 		selectableFields: selectableFields,
+		// kcp: If this is a wildcard partial metadata CRD variant, we don't require that the CRD serves the appropriate
+		// version, because the schema does not matter.
+		requireValidVersion: !strings.HasSuffix(string(crd.UID), ".wildcard.partial-metadata"),
 	}
 	return &safeConverterWrapper{unsafe}, unsafe, nil
 }
@@ -121,6 +124,8 @@ type crConverter struct {
 	validVersions    map[schema.GroupVersion]bool
 	clusterScoped    bool
 	selectableFields map[schema.GroupVersion]sets.Set[string]
+	// kcp: If true, require that the CRD serves the appropriate version
+	requireValidVersion bool
 }
 
 func (c *crConverter) ConvertFieldLabel(gvk schema.GroupVersionKind, label, value string) (string, string, error) {
@@ -192,25 +197,115 @@ func (c *crConverter) ConvertToVersion(in runtime.Object, target runtime.GroupVe
 		}
 	}
 
-	if !c.validVersions[toGVK.GroupVersion()] {
+	isList := false
+	var list *unstructured.UnstructuredList
+	switch t := in.(type) {
+	case *unstructured.Unstructured:
+		list = &unstructured.UnstructuredList{Items: []unstructured.Unstructured{*t}}
+	case *unstructured.UnstructuredList:
+		list = t
+		isList = true
+	default:
+		return nil, fmt.Errorf("unexpected type %T", in)
+	}
+
+	if c.requireValidVersion && !c.validVersions[toGVK.GroupVersion()] {
 		return nil, fmt.Errorf("request to convert CR to an invalid group/version: %s", toGVK.GroupVersion().String())
 	}
 	// Note that even if the request is for a list, the GV of the request UnstructuredList is what
 	// is expected to convert to. As mentioned in the function's document, it is not expected to
 	// get a v1.List.
-	if !c.validVersions[fromGVK.GroupVersion()] {
+	if c.requireValidVersion && !c.validVersions[fromGVK.GroupVersion()] {
 		return nil, fmt.Errorf("request to convert CR from an invalid group/version: %s", fromGVK.GroupVersion().String())
 	}
-	// Check list item's apiVersion
-	if list, ok := in.(*unstructured.UnstructuredList); ok {
-		for i := range list.Items {
-			expectedGV := list.Items[i].GroupVersionKind().GroupVersion()
-			if !c.validVersions[expectedGV] {
-				return nil, fmt.Errorf("request to convert CR list failed, list index %d has invalid group/version: %s", i, expectedGV.String())
+
+	desiredAPIVersion := toGVK.GroupVersion().String()
+	objectsToConvert, err := getObjectsToConvert(list, desiredAPIVersion, c.validVersions, c.requireValidVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	objCount := len(objectsToConvert)
+	if objCount == 0 {
+		// no objects needed conversion
+		if !isList {
+			// for a single item, return as-is
+			return in, nil
+		}
+		// for a list, set the version of the top-level list object (all individual objects are already in the correct version)
+		list.SetAPIVersion(desiredAPIVersion)
+		return list, nil
+	}
+
+	// A smoke test in API machinery calls the converter on empty objects during startup. The test is initiated here:
+	// https://github.com/kubernetes/kubernetes/blob/dbb448bbdcb9e440eee57024ffa5f1698956a054/staging/src/k8s.io/apiserver/pkg/storage/cacher/cacher.go#L201
+	if isEmptyUnstructuredObject(in) {
+		converted, err := &nopConverter{}.Convert(list, toGVK.GroupVersion())
+		if err != nil {
+			return nil, err
+		}
+		return converted, nil
+	}
+
+	// Deepcopy ObjectMeta because the converter might mutate the objects, and we
+	// need the original ObjectMeta furthermore for validation and restoration.
+	for i := range objectsToConvert {
+		original := objectsToConvert[i].Object
+		objectsToConvert[i].Object = make(map[string]interface{}, len(original))
+		for k, v := range original {
+			if k == "metadata" {
+				v = runtime.DeepCopyJSONValue(v)
 			}
+			objectsToConvert[i].Object[k] = v
 		}
 	}
-	return c.converter.Convert(in, toGVK.GroupVersion())
+
+	// Do the (potentially mutating) conversion.
+	convertedObjects, err := c.converter.Convert(&unstructured.UnstructuredList{
+		Object: list.Object,
+		Items:  objectsToConvert,
+	}, toGVK.GroupVersion())
+	if err != nil {
+		return nil, fmt.Errorf("conversion for %v failed: %w", in.GetObjectKind().GroupVersionKind(), err)
+	}
+	if len(convertedObjects.Items) != len(objectsToConvert) {
+		return nil, fmt.Errorf("conversion for %v returned %d objects, expected %d", in.GetObjectKind().GroupVersionKind(), len(convertedObjects.Items), len(objectsToConvert))
+	}
+
+	// Fill back in the converted objects from the response at the right spots.
+	// The response list might be sparse because objects had the right version already.
+	convertedList := list
+	convertedList.SetAPIVersion(desiredAPIVersion)
+	convertedIndex := 0
+	for i := range convertedList.Items {
+		original := &convertedList.Items[i]
+		if original.GetAPIVersion() == desiredAPIVersion {
+			// This item has not been sent for conversion, and therefore does not show up in the response.
+			// convertedList has the right item already.
+			continue
+		}
+		converted := &convertedObjects.Items[convertedIndex]
+		convertedIndex++
+		if expected, got := toGVK.GroupVersion(), converted.GetObjectKind().GroupVersionKind().GroupVersion(); expected != got {
+			return nil, fmt.Errorf("conversion for %v returned invalid converted object at index %v: invalid groupVersion (expected %v, received %v)", in.GetObjectKind().GroupVersionKind(), convertedIndex, expected, got)
+		}
+		if expected, got := original.GetObjectKind().GroupVersionKind().Kind, converted.GetObjectKind().GroupVersionKind().Kind; expected != got {
+			return nil, fmt.Errorf("conversion for %v returned invalid converted object at index %v: invalid kind (expected %v, received %v)", in.GetObjectKind().GroupVersionKind(), convertedIndex, expected, got)
+		}
+		if err := validateConvertedObject(original, converted); err != nil {
+			return nil, fmt.Errorf("conversion for %v returned invalid converted object at index %v: %v", in.GetObjectKind().GroupVersionKind(), convertedIndex, err)
+		}
+		if err := restoreObjectMeta(original, converted); err != nil {
+			return nil, fmt.Errorf("conversion for %v returned invalid metadata in object at index %v: %v", in.GetObjectKind().GroupVersionKind(), convertedIndex, err)
+		}
+		convertedList.Items[i] = *converted
+	}
+
+	if isList {
+		return convertedList, nil
+	}
+
+	return &convertedList.Items[0], nil
 }
 
 // safeConverterWrapper is a wrapper over an unsafe object converter that makes copy of the input and then delegate to the unsafe converter.
