@@ -27,6 +27,7 @@ import (
 
 	restful "github.com/emicklei/go-restful/v3"
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
+	"github.com/kcp-dev/logicalcluster/v3"
 
 	apidiscoveryv2 "k8s.io/api/apidiscovery/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -492,7 +493,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		if err != nil {
 			return nil, nil, err
 		}
-		apiResource.StorageVersionHash = discovery.StorageVersionHash(gvk.Group, gvk.Version, gvk.Kind)
+		apiResource.StorageVersionHash = discovery.StorageVersionHash(logicalcluster.Name(""), gvk.Group, gvk.Version, gvk.Kind)
 	}
 
 	// Get the list of actions for the given scope.
