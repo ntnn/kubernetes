@@ -38,25 +38,20 @@ func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.
 
 		// Get the current resource list from discovery.
 		newResources, err := GetDeletableResources(logger, discoveryClient)
+		if err != nil {
+			return err
+		}
 
 		if len(newResources) == 0 {
 			logger.V(2).Info("no resources reported by discovery, skipping garbage collector sync")
 			metrics.GarbageCollectorResourcesSyncError.Inc()
-			return
-		}
-		if groupLookupFailures, isLookupFailure := discovery.GroupDiscoveryFailedErrorGroups(err); isLookupFailure {
-			// In partial discovery cases, preserve existing synced informers for resources in the failed groups, so resyncMonitors will only add informers for newly seen resources
-			for k, v := range oldResources {
-				if _, failed := groupLookupFailures[k.GroupVersion()]; failed && gc.dependencyGraphBuilder.IsResourceSynced(k) {
-					newResources[k] = v
-				}
-			}
+			return nil
 		}
 
 		// Decide whether discovery has reported a change.
 		if reflect.DeepEqual(oldResources, newResources) {
 			logger.V(5).Info("no resource updates from discovery, skipping garbage collector sync")
-			return
+			return nil
 		}
 
 		// Ensure workers are paused to avoid processing events before informers
@@ -72,19 +67,13 @@ func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.
 			// On a reattempt, check if available resources have changed
 			if attempt > 1 {
 				newResources, err = GetDeletableResources(logger, discoveryClient)
-
+				if err != nil {
+					return false, err
+				}
 				if len(newResources) == 0 {
 					logger.V(2).Info("no resources reported by discovery", "attempt", attempt)
 					metrics.GarbageCollectorResourcesSyncError.Inc()
 					return false, nil
-				}
-				if groupLookupFailures, isLookupFailure := discovery.GroupDiscoveryFailedErrorGroups(err); isLookupFailure {
-					// In partial discovery cases, preserve existing synced informers for resources in the failed groups, so resyncMonitors will only add informers for newly seen resources
-					for k, v := range oldResources {
-						if _, failed := groupLookupFailures[k.GroupVersion()]; failed && gc.dependencyGraphBuilder.IsResourceSynced(k) {
-							newResources[k] = v
-						}
-					}
 				}
 			}
 
