@@ -593,11 +593,11 @@ func (b *builder) getOpenAPIV3Config() *common.OpenAPIV3Config {
 		},
 		GetDefinitions: func(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 			def := utilopenapi.GetOpenAPIDefinitionsWithoutDisabledFeatures(generatedopenapi.GetOpenAPIDefinitions)(ref)
-			def[gvkToModelName(b.group, b.version, b.kind)] = common.OpenAPIDefinition{
+			def[gvkToModelName(packagePrefix(b.group), b.version, b.kind)] = common.OpenAPIDefinition{
 				Schema:       *b.schema,
 				Dependencies: []string{objectMetaType},
 			}
-			def[gvkToModelName(b.group, b.version, b.listKind)] = common.OpenAPIDefinition{
+			def[gvkToModelName(packagePrefix(b.group), b.version, b.listKind)] = common.OpenAPIDefinition{
 				Schema: *b.listSchema,
 			}
 			return def
