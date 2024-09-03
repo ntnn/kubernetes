@@ -609,7 +609,7 @@ func hasValidConversionReviewVersionOrEmpty(versions []string) bool {
 	return false
 }
 
-func validateCustomResourceConversion(conversion *apiextensions.CustomResourceConversion, requireRecognizedVersion bool, fldPath *field.Path, opts validationOptions) field.ErrorList {
+func validateCustomResourceConversion(conversion *apiextensions.CustomResourceConversion, requireRecognizedVersion bool, fldPath *field.Path, opts ValidationOptions) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if conversion == nil {
 		return allErrs
@@ -628,7 +628,7 @@ func validateCustomResourceConversion(conversion *apiextensions.CustomResourceCo
 			case cc.Service != nil:
 				allErrs = append(allErrs, webhook.ValidateWebhookService(fldPath.Child("webhookClientConfig").Child("service"), cc.Service.Name, cc.Service.Namespace, cc.Service.Path, cc.Service.Port)...)
 			}
-			if len(cc.CABundle) > 0 && !opts.allowInvalidCABundle {
+			if len(cc.CABundle) > 0 && !opts.AllowInvalidCABundle {
 				allErrs = append(allErrs, webhook.ValidateCABundle(fldPath.Child("webhookClientConfig").Child("caBundle"), cc.CABundle)...)
 			}
 		}
@@ -844,7 +844,7 @@ func ValidateCustomResourceColumnDefinition(col *apiextensions.CustomResourceCol
 	return allErrs
 }
 
-func ValidateCustomResourceSelectableFields(selectableFields []apiextensions.SelectableField, schema *structuralschema.Structural, fldPath *field.Path, opts validationOptions, version string) (allErrs field.ErrorList) {
+func ValidateCustomResourceSelectableFields(selectableFields []apiextensions.SelectableField, schema *structuralschema.Structural, fldPath *field.Path, opts ValidationOptions, version string) (allErrs field.ErrorList) {
 	uniqueSelectableFields := sets.New[string]()
 	for i, selectableField := range selectableFields {
 		indexFldPath := fldPath.Index(i)
@@ -871,7 +871,7 @@ func ValidateCustomResourceSelectableFields(selectableFields []apiextensions.Sel
 		}
 	}
 	uniqueSelectableFieldCount := uniqueSelectableFields.Len()
-	if uniqueSelectableFieldCount > MaxSelectableFields && !opts.allowTooManySelectableFields[version] {
+	if uniqueSelectableFieldCount > MaxSelectableFields && !opts.AllowTooManySelectableFields[version] {
 		allErrs = append(allErrs, field.TooMany(fldPath, uniqueSelectableFieldCount, MaxSelectableFields))
 	}
 	return allErrs
