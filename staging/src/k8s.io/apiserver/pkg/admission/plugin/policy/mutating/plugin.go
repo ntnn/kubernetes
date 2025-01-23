@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"k8s.io/api/admissionregistration/v1beta1"
+	"github.com/kcp-dev/logicalcluster/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -94,7 +95,7 @@ func NewPlugin(_ io.Reader) *Plugin {
 	res := &Plugin{}
 	res.Plugin = generic.NewPlugin(
 		handler,
-		func(f informers.SharedInformerFactory, client kubernetes.Interface, dynamicClient dynamic.Interface, restMapper meta.RESTMapper) generic.Source[PolicyHook] {
+		func(f informers.SharedInformerFactory, client kubernetes.Interface, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, clusterName logicalcluster.Name) generic.Source[PolicyHook] {
 			return generic.NewPolicySource(
 				f.Admissionregistration().V1beta1().MutatingAdmissionPolicies().Informer(),
 				f.Admissionregistration().V1beta1().MutatingAdmissionPolicyBindings().Informer(),
@@ -106,6 +107,7 @@ func NewPlugin(_ io.Reader) *Plugin {
 				f,
 				dynamicClient,
 				restMapper,
+				clusterName,
 			)
 		},
 		func(a authorizer.Authorizer, m *matching.Matcher, client kubernetes.Interface) generic.Dispatcher[PolicyHook] {
