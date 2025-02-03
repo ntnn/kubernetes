@@ -819,8 +819,7 @@ func TestGetDeletableResources(t *testing.T) {
 }
 
 // TestGarbageCollectorSync ensures that a discovery client error
-// or an informer sync error will not cause the garbage collector
-// to block infinitely.
+// will not cause the garbage collector to block infinitely.
 func TestGarbageCollectorSync(t *testing.T) {
 	serverResources := []*metav1.APIResourceList{
 		{
@@ -851,6 +850,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 		PreferredResources: serverResources,
 		Error:              nil,
 		Lock:               sync.Mutex{},
+		InterfaceUsedCount: 0,
 	}
 
 	testHandler := &fakeActionHandler{
@@ -936,9 +936,9 @@ func TestGarbageCollectorSync(t *testing.T) {
 	// Wait until the sync discovers the initial resources
 	time.Sleep(1 * time.Second)
 
-	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	err = expectSyncNotBlocked(fakeDiscoveryClient, &gc.workerLock)
 	if err != nil {
-		t.Fatalf("Expected garbagecollector.Sync to still be running but it is blocked: %v", err)
+		t.Fatalf("Expected garbagecollector.Sync to be running but it is blocked: %v", err)
 	}
 	assertMonitors(t, gc, "pods", "deployments")
 
@@ -953,7 +953,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 	// Remove the error from being returned and see if the garbage collector sync is still working
 	fakeDiscoveryClient.setPreferredResources(serverResources, nil)
 
-	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	err = expectSyncNotBlocked(fakeDiscoveryClient, &gc.workerLock)
 	if err != nil {
 		t.Fatalf("Expected garbagecollector.Sync to still be running but it is blocked: %v", err)
 	}
@@ -969,7 +969,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 	// Put the resources back to normal and ensure garbage collector sync recovers
 	fakeDiscoveryClient.setPreferredResources(serverResources, nil)
 
-	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	err = expectSyncNotBlocked(fakeDiscoveryClient, &gc.workerLock)
 	if err != nil {
 		t.Fatalf("Expected garbagecollector.Sync to still be running but it is blocked: %v", err)
 	}
@@ -986,7 +986,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 	fakeDiscoveryClient.setPreferredResources(serverResources, nil)
 	// Wait until sync discovers the change
 	time.Sleep(1 * time.Second)
-	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	err = expectSyncNotBlocked(fakeDiscoveryClient, &gc.workerLock)
 	if err != nil {
 		t.Fatalf("Expected garbagecollector.Sync to still be running but it is blocked: %v", err)
 	}
@@ -1027,15 +1027,27 @@ func assertMonitors(t *testing.T, gc *GarbageCollector, resources ...string) {
 	}
 }
 
-func expectSyncNotBlocked(fakeDiscoveryClient *fakeServerResources) error {
+func expectSyncNotBlocked(fakeDiscoveryClient *fakeServerResources, workerLock *sync.RWMutex) error {
 	before := fakeDiscoveryClient.getInterfaceUsedCount()
 	t := 1 * time.Second
 	time.Sleep(t)
 	after := fakeDiscoveryClient.getInterfaceUsedCount()
 	if before == after {
-		return fmt.Errorf("discoveryClient.ServerPreferredResources() not called over %v", t)
+		return fmt.Errorf("discoveryClient.ServerPreferredResources() called %d times over %v", after-before, t)
 	}
-	return nil
+
+	workerLockAcquired := make(chan struct{})
+	go func() {
+		workerLock.Lock()
+		defer workerLock.Unlock()
+		close(workerLockAcquired)
+	}()
+	select {
+	case <-workerLockAcquired:
+		return nil
+	case <-time.After(t):
+		return fmt.Errorf("workerLock blocked for at least %v", t)
+	}
 }
 
 type fakeServerResources struct {
