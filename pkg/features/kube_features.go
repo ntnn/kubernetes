@@ -990,6 +990,13 @@ const (
 	// operation when scheduling a Pod by setting the `metadata.labels` field on the submitted Binding,
 	// similar to how `metadata.annotations` behaves.
 	PodTopologyLabelsAdmission featuregate.Feature = "PodTopologyLabelsAdmission"
+
+	// TODO(cnvergence): Remove when not applicable
+	// owner: @cnvergence
+	// alpha: v1.31
+	//
+	// GlobalServiceAccount is a feature gate that enables the cross-workspace service accounts feature.
+	GlobalServiceAccount featuregate.Feature = "GlobalServiceAccount"
 )
 
 // defaultVersionedKubernetesFeatureGates consists of all known Kubernetes-specific feature keys with VersionedSpecs.
