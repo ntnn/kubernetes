@@ -1088,6 +1088,13 @@ const (
 	//
 	// Enables support for joining Windows containers to a hosts' network namespace.
 	WindowsHostNetwork featuregate.Feature = "WindowsHostNetwork"
+
+	// TODO(cnvergence): Remove when not applicable
+	// owner: @cnvergence
+	// alpha: v1.31
+	//
+	// GlobalServiceAccount is a feature gate that enables the cross-workspace service accounts feature.
+	GlobalServiceAccount featuregate.Feature = "GlobalServiceAccount"
 )
 
 // defaultVersionedKubernetesFeatureGates consists of all known Kubernetes-specific feature keys with VersionedSpecs.
@@ -2078,6 +2085,14 @@ var defaultVersionedKubernetesFeatureGates = map[featuregate.Feature]featuregate
 
 	zpagesfeatures.ComponentStatusz: {
 		{Version: version.MustParse("1.32"), Default: false, PreRelease: featuregate.Alpha},
+	},
+
+	DisableCPUQuotaWithExclusiveCPUs: {
+		{Version: version.MustParse("1.33"), Default: true, PreRelease: featuregate.Beta},
+	},
+
+	GlobalServiceAccount: {
+		{Version: version.MustParse("1.31"), Default: false, PreRelease: featuregate.Alpha},
 	},
 }
 
