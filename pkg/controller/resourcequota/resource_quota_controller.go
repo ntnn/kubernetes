@@ -82,7 +82,9 @@ type Controller struct {
 	// Must have authority to list all resources in the system, and update quota status
 	rqClient corev1client.ResourceQuotasGetter
 	// A lister/getter of resource quota objects
-	rqLister corelisters.ResourceQuotaLister
+	rqLister                         corelisters.ResourceQuotaLister
+	rqInformer                       cache.SharedIndexInformer
+	resourceEventHandlerRegistration cache.ResourceEventHandlerRegistration
 	// A list of functions that return true when their caches have synced
 	informerSyncedFuncs []cache.InformerSynced
 	// ResourceQuota objects that need to be synchronized
@@ -109,6 +111,7 @@ func NewController(ctx context.Context, options *ControllerOptions) (*Controller
 	rq := &Controller{
 		rqClient:            options.QuotaClient,
 		rqLister:            options.ResourceQuotaInformer.Lister(),
+		rqInformer:          options.ResourceQuotaInformer.Informer(),
 		informerSyncedFuncs: []cache.InformerSynced{options.ResourceQuotaInformer.Informer().HasSynced},
 		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
 			workqueue.DefaultTypedControllerRateLimiter[string](),
@@ -126,7 +129,7 @@ func NewController(ctx context.Context, options *ControllerOptions) (*Controller
 
 	logger := klog.FromContext(ctx)
 
-	options.ResourceQuotaInformer.Informer().AddEventHandlerWithResyncPeriod(
+	rq.resourceEventHandlerRegistration, err = options.ResourceQuotaInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				rq.addQuota(logger, obj)
@@ -178,7 +181,7 @@ func NewController(ctx context.Context, options *ControllerOptions) (*Controller
 			return nil, err
 		}
 
-		if err = qm.SyncMonitors(ctx, resources); err != nil {
+		if err := qm.SyncMonitors(ctx, resources); err != nil {
 			utilruntime.HandleError(fmt.Errorf("initial monitor sync has error: %v", err))
 		}
 
@@ -295,6 +298,7 @@ func (rq *Controller) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
 	defer rq.queue.ShutDown()
 	defer rq.missingUsageQueue.ShutDown()
+	defer rq.rqInformer.RemoveEventHandler(rq.resourceEventHandlerRegistration)
 
 	logger := klog.FromContext(ctx)
 
