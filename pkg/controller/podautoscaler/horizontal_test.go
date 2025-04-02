@@ -57,6 +57,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 
 	_ "k8s.io/kubernetes/pkg/apis/apps/install"
 	_ "k8s.io/kubernetes/pkg/apis/autoscaling/install"
@@ -768,7 +769,7 @@ func (tc *testCase) setupController(t *testing.T) (*HorizontalController, inform
 	defaultDownscalestabilizationWindow := 5 * time.Minute
 
 	tCtx := ktesting.Init(t)
-	hpaController := NewHorizontalController(
+	hpaController, err := NewHorizontalController(
 		tCtx,
 		eventClient.CoreV1(),
 		testScaleClient,
@@ -783,6 +784,7 @@ func (tc *testCase) setupController(t *testing.T) (*HorizontalController, inform
 		defaultTestingCPUInitializationPeriod,
 		defaultTestingDelayOfInitialReadinessStatus,
 	)
+	assert.Nil(t, err)
 	hpaController.hpaListerSynced = alwaysReady
 	if tc.recommendations != nil {
 		hpaController.recommendations["test-namespace/test-hpa"] = tc.recommendations
@@ -5260,7 +5262,7 @@ func TestMultipleHPAs(t *testing.T) {
 	informerFactory := informers.NewSharedInformerFactory(testClient, controller.NoResyncPeriodFunc())
 
 	tCtx := ktesting.Init(t)
-	hpaController := NewHorizontalController(
+	hpaController, err := NewHorizontalController(
 		tCtx,
 		testClient.CoreV1(),
 		testScaleClient,
@@ -5275,6 +5277,7 @@ func TestMultipleHPAs(t *testing.T) {
 		defaultTestingCPUInitializationPeriod,
 		defaultTestingDelayOfInitialReadinessStatus,
 	)
+	assert.Nil(t, err)
 	hpaController.scaleUpEvents = scaleUpEventsMap
 	hpaController.scaleDownEvents = scaleDownEventsMap
 
@@ -5294,4 +5297,46 @@ func TestMultipleHPAs(t *testing.T) {
 	}
 
 	assert.Len(t, processedHPA, hpaCount, "Expected to process all HPAs")
+}
+
+func TestShutdown(t *testing.T) {
+	kCtx := ktesting.Init(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	testClient := &fake.Clientset{}
+	testScaleClient := &scalefake.FakeScaleClient{}
+	testMetricsClient := &metricsfake.Clientset{}
+	metricsClient := metrics.NewRESTMetricsClient(
+		testMetricsClient.MetricsV1beta1(),
+		&cmfake.FakeCustomMetricsClient{},
+		&emfake.FakeExternalMetricsClient{},
+	)
+	informerFactory := informers.NewSharedInformerFactory(testClient, controller.NoResyncPeriodFunc())
+
+	resyncPeriod := time.Second
+
+	hpaController, err := NewHorizontalController(
+		kCtx,
+		testClient.CoreV1(),
+		testScaleClient,
+		testClient.AutoscalingV2(),
+		testrestmapper.TestOnlyStaticRESTMapper(legacyscheme.Scheme),
+		metricsClient,
+		informerFactory.Autoscaling().V2().HorizontalPodAutoscalers(),
+		informerFactory.Core().V1().Pods(),
+		resyncPeriod,
+		5*time.Minute,
+		defaultTestingTolerance,
+		defaultTestingCPUInitializationPeriod,
+		defaultTestingDelayOfInitialReadinessStatus,
+	)
+	if err != nil {
+		t.Errorf("Failed to create HPA controller: %v", err)
+	}
+
+	kCtx.Cancel("leak check")
+	hpaController.Shutdown()
+	// Wait for resyncPeriod so the queue workers have time to receive
+	// the shutdown signal
+	time.Sleep(resyncPeriod)
 }
