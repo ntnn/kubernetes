@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"go.uber.org/goleak"
 	v1 "k8s.io/api/core/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +48,7 @@ type fakeRepair struct {
 	serviceCIDRStore cache.Store
 }
 
-func newFakeRepair() (*fake.Clientset, *fakeRepair) {
+func newFakeRepair() (*fake.Clientset, *fakeRepair, error) {
 	fakeClient := fake.NewSimpleClientset()
 
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0*time.Second)
@@ -75,13 +76,13 @@ func newFakeRepair() (*fake.Clientset, *fakeRepair) {
 		return false, &networkingv1beta1.IPAddress{}, err
 	}))
 
-	r := NewRepairIPAddress(0*time.Second,
+	r, err := NewRepairIPAddress(0*time.Second,
 		fakeClient,
 		serviceInformer,
 		serviceCIDRInformer,
 		ipInformer,
 	)
-	return fakeClient, &fakeRepair{r, serviceIndexer, ipIndexer, serviceCIDRIndexer}
+	return fakeClient, &fakeRepair{r, serviceIndexer, ipIndexer, serviceCIDRIndexer}, err
 }
 
 func TestRepairServiceIP(t *testing.T) {
@@ -319,7 +320,11 @@ func TestRepairServiceIP(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			c, r := newFakeRepair()
+			c, r, err := newFakeRepair()
+			if err != nil {
+				t.Errorf("Unexpected error creating RepairIPAddress: %v", err)
+			}
+			defer r.Shutdown()
 			// add cidrs
 			for _, cidr := range test.cidrs {
 				err := r.serviceCIDRStore.Add(cidr)
@@ -365,6 +370,17 @@ func TestRepairServiceIP(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRepairIpShutdown(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	_, r, err := newFakeRepair()
+	if err != nil {
+		t.Errorf("Unexpected error creating RepairIPAddress: %v", err)
+	}
+
+	r.Shutdown()
 }
 
 func TestRepairIPAddress_syncIPAddress(t *testing.T) {
@@ -483,13 +499,15 @@ func TestRepairIPAddress_syncIPAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, r := newFakeRepair()
-			err := r.ipAddressStore.Add(tt.ip)
+			c, r, err := newFakeRepair()
 			if err != nil {
+				t.Errorf("Unexpected error creating RepairIPAddress: %v", err)
+			}
+			defer r.Shutdown()
+			if err := r.ipAddressStore.Add(tt.ip); err != nil {
 				t.Fatal(err)
 			}
-			err = r.serviceStore.Add(newService("foo", []string{tt.ip.Name}))
-			if err != nil {
+			if err := r.serviceStore.Add(newService("foo", []string{tt.ip.Name})); err != nil {
 				t.Fatal(err)
 			}
 
