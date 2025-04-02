@@ -97,6 +97,7 @@ type HorizontalController struct {
 	// NewHorizontalController.
 	hpaLister       autoscalinglisters.HorizontalPodAutoscalerLister
 	hpaListerSynced cache.InformerSynced
+	hpaUnregister   func() error
 
 	// podLister is able to list/get Pods from the shared cache from the informer passed in to
 	// NewHorizontalController.
@@ -136,7 +137,7 @@ func NewHorizontalController(
 	tolerance float64,
 	cpuInitializationPeriod,
 	delayOfInitialReadinessStatus time.Duration,
-) *HorizontalController {
+) (*HorizontalController, error) {
 	broadcaster := record.NewBroadcaster(record.WithContext(ctx))
 	broadcaster.StartStructuredLogging(3)
 	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: evtNamespacer.Events("")})
@@ -164,7 +165,7 @@ func NewHorizontalController(
 		hpaSelectors:        selectors.NewBiMultimap(),
 	}
 
-	hpaInformer.Informer().AddEventHandlerWithResyncPeriod(
+	registration, err := hpaInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    hpaController.enqueueHPA,
 			UpdateFunc: hpaController.updateHPA,
@@ -172,8 +173,15 @@ func NewHorizontalController(
 		},
 		resyncPeriod,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register event handler: %w", err)
+	}
+
 	hpaController.hpaLister = hpaInformer.Lister()
 	hpaController.hpaListerSynced = hpaInformer.Informer().HasSynced
+	hpaController.hpaUnregister = func() error {
+		return hpaInformer.Informer().RemoveEventHandler(registration)
+	}
 
 	hpaController.podLister = podInformer.Lister()
 	hpaController.podListerSynced = podInformer.Informer().HasSynced
@@ -189,13 +197,13 @@ func NewHorizontalController(
 
 	monitor.Register()
 
-	return hpaController
+	return hpaController, nil
 }
 
 // Run begins watching and syncing.
 func (a *HorizontalController) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
-	defer a.queue.ShutDown()
+	defer a.Shutdown()
 
 	logger := klog.FromContext(ctx)
 	logger.Info("Starting HPA controller")
@@ -210,6 +218,11 @@ func (a *HorizontalController) Run(ctx context.Context, workers int) {
 	}
 
 	<-ctx.Done()
+}
+
+func (a *HorizontalController) Shutdown() {
+	utilruntime.HandleError(a.hpaUnregister())
+	a.queue.ShutDown()
 }
 
 // obj could be an *v1.HorizontalPodAutoscaler, or a DeletionFinalStateUnknown marker item.
