@@ -204,7 +204,7 @@ func (nm *NamespaceController) syncNamespaceFromKey(ctx context.Context, key str
 // Run starts observing the system with the specified number of workers.
 func (nm *NamespaceController) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
-	defer nm.queue.ShutDown()
+	defer nm.Shutdown()
 	logger := klog.FromContext(ctx)
 	logger.Info("Starting namespace controller")
 	defer logger.Info("Shutting down namespace controller")
@@ -218,4 +218,8 @@ func (nm *NamespaceController) Run(ctx context.Context, workers int) {
 		go wait.UntilWithContext(ctx, nm.worker, time.Second)
 	}
 	<-ctx.Done()
+}
+
+func (nm *NamespaceController) Shutdown() {
+	nm.queue.ShutDown()
 }

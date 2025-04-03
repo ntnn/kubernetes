@@ -6,9 +6,6 @@ pkg/controller/serviceaccount/serviceaccounts_controller.go:75:40:	saHandler, _ 
 pkg/controller/serviceaccount/serviceaccounts_controller.go:81:40:	nsHandler, _ := nsInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 pkg/controller/namespace/namespace_controller.go:88:31:	namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/controller/garbagecollector/graph_builder.go:229:20:	shared.Informer().AddEventHandlerWithResyncPeriod(handlers, ResourceResyncTime)
-pkg/controller/bootstrap/bootstrapsigner.go:114:24:	configMaps.Informer().AddEventHandlerWithResyncPeriod(
-pkg/controller/bootstrap/bootstrapsigner.go:133:21:	secrets.Informer().AddEventHandlerWithResyncPeriod(
-pkg/controller/bootstrap/tokencleaner.go:89:21:	secrets.Informer().AddEventHandlerWithResyncPeriod(
 pkg/proxy/config/config.go:84:61:	handlerRegistration, _ := endpointSliceInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/proxy/config/config.go:178:55:	handlerRegistration, _ := serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/proxy/config/config.go:309:33:	_, _ = nodeInformer.Informer().AddEventHandlerWithResyncPeriod(

@@ -70,9 +70,10 @@ type EndpointSliceHandler interface {
 
 // EndpointSliceConfig tracks a set of endpoints configurations.
 type EndpointSliceConfig struct {
-	listerSynced  cache.InformerSynced
-	eventHandlers []EndpointSliceHandler
-	logger        klog.Logger
+	listerSynced               cache.InformerSynced
+	eventHandlers              []EndpointSliceHandler
+	eventHandlerDeregistration func() error
+	logger                     klog.Logger
 }
 
 // NewEndpointSliceConfig creates a new EndpointSliceConfig.
@@ -102,6 +103,8 @@ func (c *EndpointSliceConfig) RegisterEventHandler(handler EndpointSliceHandler)
 
 // Run waits for cache synced and invokes handlers after syncing.
 func (c *EndpointSliceConfig) Run(stopCh <-chan struct{}) {
+	defer c.Shutdown()
+
 	c.logger.Info("Starting endpoint slice config controller")
 
 	if !cache.WaitForNamedCacheSync("endpoint slice config", stopCh, c.listerSynced) {
@@ -111,6 +114,14 @@ func (c *EndpointSliceConfig) Run(stopCh <-chan struct{}) {
 	for _, h := range c.eventHandlers {
 		c.logger.V(3).Info("Calling handler.OnEndpointSlicesSynced()")
 		h.OnEndpointSlicesSynced()
+	}
+
+	<-stopCh
+}
+
+func (c *EndpointSliceConfig) Shutdown() {
+	if c.eventHandlerDeregistration != nil {
+		utilruntime.HandleError(c.eventHandlerDeregistration())
 	}
 }
 

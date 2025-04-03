@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	"go.uber.org/goleak"
+	v1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -389,6 +390,10 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 	sharedInformers.Start(stopCh)
 	go config.Run(stopCh)
 
+	// if !sharedInformers.Discovery().V1().EndpointSlices().Informer().HasStarted() {
+	// 	t.Fatalf("Expected endpoint slices to be started")
+	// }
+
 	endpoints1 := &discoveryv1.EndpointSlice{
 		ObjectMeta:  metav1.ObjectMeta{Namespace: "testnamespace", Name: "foo"},
 		AddressType: discoveryv1.AddressTypeIPv4,
@@ -451,6 +456,29 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 	endpoints = []*discoveryv1.EndpointSlice{endpoints1v2, endpoints3}
 	handler.ValidateEndpointSlices(t, endpoints)
 	handler2.ValidateEndpointSlices(t, endpoints)
+}
+
+func TestEndpointSliceConfig_Shutdown(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	_, ctx := klogtesting.NewTestContext(t)
+	client := fake.NewSimpleClientset()
+
+	informerStopCh := make(chan struct{})
+	// defer close(informerStopCh)
+
+	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
+	sharedInformers.Start(informerStopCh)
+	endpointSlices := sharedInformers.Discovery().V1().EndpointSlices()
+	sharedInformers.Start(informerStopCh)
+
+	if !endpointSlices.Informer().HasStarted() {
+		t.Fatalf("Expected endpoint slices to be started")
+	}
+
+	NewEndpointSliceConfig(ctx, endpointSlices, time.Minute)
+	// config := NewEndpointSliceConfig(ctx, sharedInformers.Discovery().V1().EndpointSlices(), time.Minute)
+	// config.Shutdown()
 }
 
 // TODO: Add a unittest for interrupts getting processed in a timely manner.
