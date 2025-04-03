@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/goleak"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -146,4 +147,32 @@ func TestCleanerExpiredAt(t *testing.T) {
 			}),
 	}
 	verifyFunc()
+}
+
+func TestTokenCleaner_Shutdown(t *testing.T) {
+	options := DefaultTokenCleanerOptions()
+	cl := fake.NewSimpleClientset()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	informerFactory := informers.NewSharedInformerFactory(cl, options.SecretResync)
+	secrets := informerFactory.Core().V1().Secrets()
+
+	informerFactory.Start(stopCh)
+	go secrets.Informer().Run(stopCh)
+
+	for !secrets.Informer().HasSynced() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	cleaner, err := NewTokenCleaner(cl, secrets, options)
+	if err != nil {
+		t.Fatalf("error creating TokenCleaner: %v", err)
+	}
+	cleaner.Shutdown()
+
+	time.Sleep(100 * time.Millisecond)
 }
