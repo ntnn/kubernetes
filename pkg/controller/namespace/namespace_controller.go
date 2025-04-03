@@ -57,6 +57,8 @@ type NamespaceController struct {
 	lister kcpcorev1listers.NamespaceClusterLister
 	// returns true when the namespace cache is ready
 	listerSynced cache.InformerSynced
+	// removes the handlers for this controller from the informer
+	deregister func() error
 	// namespaces that have been queued up for processing by workers
 	queue workqueue.TypedRateLimitingInterface[string]
 	// helper to delete all resources in the namespace when the namespace is deleted.
@@ -71,7 +73,7 @@ func NewNamespaceController(
 	discoverResourcesFn func(clusterName logicalcluster.Path) ([]*metav1.APIResourceList, error),
 	namespaceInformer kcpcorev1informers.NamespaceClusterInformer,
 	resyncPeriod time.Duration,
-	finalizerToken v1.FinalizerName) *NamespaceController {
+	finalizerToken v1.FinalizerName) (*NamespaceController, error) {
 
 	// create the controller so we can inject the enqueue function
 	namespaceController := &NamespaceController{
@@ -85,7 +87,7 @@ func NewNamespaceController(
 	}
 
 	// configure the namespace informer event handlers
-	namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
+	registration, err := namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				namespace := obj.(*v1.Namespace)
@@ -98,10 +100,17 @@ func NewNamespaceController(
 		},
 		resyncPeriod,
 	)
+	if err != nil {
+		return nil, err
+	}
+
 	namespaceController.lister = namespaceInformer.Lister()
 	namespaceController.listerSynced = namespaceInformer.Informer().HasSynced
+	namespaceController.deregister = func() error {
+		return namespaceInformer.Informer().RemoveEventHandler(registration)
+	}
 
-	return namespaceController
+	return namespaceController, nil
 }
 
 // nsControllerRateLimiter is tuned for a faster than normal recycle time with default backoff speed and default overall
@@ -204,7 +213,7 @@ func (nm *NamespaceController) syncNamespaceFromKey(ctx context.Context, key str
 // Run starts observing the system with the specified number of workers.
 func (nm *NamespaceController) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
-	defer nm.queue.ShutDown()
+	defer nm.Shutdown()
 	logger := klog.FromContext(ctx)
 	logger.Info("Starting namespace controller")
 	defer logger.Info("Shutting down namespace controller")
@@ -218,4 +227,9 @@ func (nm *NamespaceController) Run(ctx context.Context, workers int) {
 		go wait.UntilWithContext(ctx, nm.worker, time.Second)
 	}
 	<-ctx.Done()
+}
+
+func (nm *NamespaceController) Shutdown() {
+	nm.queue.ShutDown()
+	nm.deregister()
 }
