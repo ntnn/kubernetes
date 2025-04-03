@@ -1,5 +1,3 @@
-pkg/controller/replication/conversion.go:76:29:func (i conversionInformer) AddEventHandlerWithResyncPeriod(handler cache.ResourceEventHandler, resyncPeriod time.Duration) (cache.ResourceEventHandlerRegistration, error) {
-pkg/controller/replication/conversion.go:77:31:	return i.SharedIndexInformer.AddEventHandlerWithResyncPeriod(conversionEventHandler{handler}, resyncPeriod)
 pkg/controller/resourcequota/resource_quota_monitor.go:184:41:	registration, err := shared.Informer().AddEventHandlerWithResyncPeriod(handlers, qm.resyncPeriod())
 pkg/controller/resourcequota/resource_quota_controller.go:162:88:			rq.resourceEventHandlerRegistration, err = options.ResourceQuotaInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/controller/serviceaccount/tokens_controller.go:101:29:	serviceAccounts.Informer().AddEventHandlerWithResyncPeriod(
@@ -15,33 +13,3 @@ pkg/proxy/config/config.go:84:61:	handlerRegistration, _ := endpointSliceInforme
 pkg/proxy/config/config.go:178:55:	handlerRegistration, _ := serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/proxy/config/config.go:309:33:	_, _ = nodeInformer.Informer().AddEventHandlerWithResyncPeriod(
 pkg/proxy/config/config.go:413:40:	_, _ = serviceCIDRInformer.Informer().AddEventHandlerWithResyncPeriod(
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/scoped_shared_informer.go:40:11:	return s.AddEventHandlerWithResyncPeriod(handler, s.sharedIndexInformer.defaultEventHandlerResyncPeriod)
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/scoped_shared_informer.go:43:4:// AddEventHandlerWithResyncPeriod adds an event handler to the
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/scoped_shared_informer.go:57:37:func (s *scopedSharedIndexInformer) AddEventHandlerWithResyncPeriod(handler cache.ResourceEventHandler, resyncPeriod time.Duration) (cache.ResourceEventHandlerRegistration, error) {
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/scoped_shared_informer.go:75:31:	return s.sharedIndexInformer.AddEventHandlerWithResyncPeriod(scopedHandler, resyncPeriod)
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/shared_informer.go:306:11:	return s.AddEventHandlerWithResyncPeriod(handler, s.defaultEventHandlerResyncPeriod)
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/shared_informer.go:326:31:func (s *sharedIndexInformer) AddEventHandlerWithResyncPeriod(handler cache.ResourceEventHandler, resyncPeriod time.Duration) (cache.ResourceEventHandlerRegistration, error) {
-vendor/github.com/kcp-dev/apimachinery/v2/third_party/informers/shared_informer.go:626:8:	// in AddEventHandlerWithResyncPeriod invocations made after the
-staging/src/k8s.io/cloud-provider/controllers/service/controller.go:136:29:	serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
-staging/src/k8s.io/cloud-provider/controllers/service/controller.go:161:26:	nodeInformer.Informer().AddEventHandlerWithResyncPeriod(
-staging/src/k8s.io/kube-aggregator/pkg/controllers/status/remote/remote_available_controller.go:124:56:	apiServiceHandler, _ := apiServiceInformer.Informer().AddEventHandlerWithResyncPeriod(
-staging/src/k8s.io/kube-aggregator/pkg/controllers/status/local/local_available_controller.go:80:56:	apiServiceHandler, _ := apiServiceInformer.Informer().AddEventHandlerWithResyncPeriod(
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:213:11:	informer.AddEventHandlerWithResyncPeriod(listener1, listener1.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:217:11:	informer.AddEventHandlerWithResyncPeriod(listener2, listener2.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:221:11:	informer.AddEventHandlerWithResyncPeriod(listener3, listener3.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:299:26:	handler1, _ := informer.AddEventHandlerWithResyncPeriod(listener1, listener1.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:310:26:	handler2, _ := informer.AddEventHandlerWithResyncPeriod(listener2, listener2.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:323:26:	handler3, _ := informer.AddEventHandlerWithResyncPeriod(listener3, listener3.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:339:26:	handler4, _ := informer.AddEventHandlerWithResyncPeriod(listener4, listener4.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:364:14:	go informer.AddEventHandlerWithResyncPeriod(listener, listener.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:388:11:	informer.AddEventHandlerWithResyncPeriod(listenerNoResync, listenerNoResync.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:391:11:	informer.AddEventHandlerWithResyncPeriod(listenerResync, listenerResync.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:782:27:					reg, err := informer.AddEventHandlerWithResyncPeriod(funcs, 1*time.Second)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:873:11:	informer.AddEventHandlerWithResyncPeriod(listener, listener.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:938:20:	_, err = informer.AddEventHandlerWithResyncPeriod(listener, listener.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer_test.go:955:26:	handle, err := informer.AddEventHandlerWithResyncPeriod(listener, listener.resyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer.go:146:5:	// AddEventHandlerWithResyncPeriod adds an event handler to the
-staging/src/k8s.io/client-go/tools/cache/shared_informer.go:162:2:	AddEventHandlerWithResyncPeriod(handler ResourceEventHandler, resyncPeriod time.Duration) (ResourceEventHandlerRegistration, error)
-staging/src/k8s.io/client-go/tools/cache/shared_informer.go:561:11:	return s.AddEventHandlerWithResyncPeriod(handler, s.defaultEventHandlerResyncPeriod)
-staging/src/k8s.io/client-go/tools/cache/shared_informer.go:581:31:func (s *sharedIndexInformer) AddEventHandlerWithResyncPeriod(handler ResourceEventHandler, resyncPeriod time.Duration) (ResourceEventHandlerRegistration, error) {
-staging/src/k8s.io/client-go/tools/cache/shared_informer.go:889:8:	// in AddEventHandlerWithResyncPeriod invocations made after the
