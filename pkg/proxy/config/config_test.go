@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	"go.uber.org/goleak"
+	v1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -380,6 +381,7 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 	defer close(stopCh)
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
+	sharedInformers.Start(stopCh)
 
 	config := NewEndpointSliceConfig(ctx, sharedInformers.Discovery().V1().EndpointSlices(), time.Minute)
 	handler := NewEndpointSliceHandlerMock()
@@ -451,6 +453,28 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 	endpoints = []*discoveryv1.EndpointSlice{endpoints1v2, endpoints3}
 	handler.ValidateEndpointSlices(t, endpoints)
 	handler2.ValidateEndpointSlices(t, endpoints)
+}
+
+func TestEndpointSliceConfig_Shutdown(t *testing.T) {
+	_, ctx := klogtesting.NewTestContext(t)
+	client := fake.NewSimpleClientset()
+
+	informerStopCh := make(chan struct{})
+	defer close(informerStopCh)
+
+	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
+	sharedInformers.Start(informerStopCh)
+	endpointSlices := sharedInformers.Discovery().V1().EndpointSlices()
+	go endpointSlices.Informer().Run(informerStopCh)
+
+	if !endpointSlices.Informer().HasSynced() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	config := NewEndpointSliceConfig(ctx, sharedInformers.Discovery().V1().EndpointSlices(), time.Minute)
+	config.Shutdown()
 }
 
 // TODO: Add a unittest for interrupts getting processed in a timely manner.
