@@ -19,7 +19,9 @@ package bootstrap
 import (
 	"context"
 	"testing"
+	"time"
 
+	"go.uber.org/goleak"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -157,4 +159,17 @@ func TestRemoveSignature(t *testing.T) {
 	}
 
 	verifyActions(t, expected, cl.Actions())
+}
+
+func TestSigner_Shutdown(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	signer, _, _, _, err := newSigner()
+	if err != nil {
+		t.Fatalf("error creating Signer: %v", err)
+	}
+	signer.Shutdown()
+
+	// TODO resync period
+	time.Sleep(100 * time.Millisecond)
 }
