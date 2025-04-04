@@ -116,7 +116,8 @@ func NewTokensController(serviceAccounts kcpcorev1informers.ServiceAccountCluste
 	secretCache := secrets.Informer().GetIndexer()
 	e.updatedSecrets = kcpthirdpartycache.NewIntegerResourceVersionMutationCache(kcpcache.DeletionHandlingMetaClusterNamespaceKeyFunc, secretCache, secretCache, 60*time.Second, true)
 	e.secretSynced = secrets.Informer().HasSynced
-	secretHandler, err := secrets.Informer().AddEventHandlerWithOptions(
+
+	secretHandler, err := secrets.Informer().AddEventHandlerWithResyncPeriod(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {

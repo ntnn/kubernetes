@@ -136,13 +136,18 @@ func New(c Config) (*legacyProvider, error) {
 			rangeRegistries.secondaryClusterIP,
 		).RunUntil
 	} else {
-		p.startServiceClusterIPRepair = serviceipallocatorcontroller.NewRepairIPAddress(
+		ipRepairer, err := serviceipallocatorcontroller.NewRepairIPAddress(
 			c.Services.IPRepairInterval,
 			client,
 			c.Informers.Core().V1().Services(),
 			c.Informers.Networking().V1beta1().ServiceCIDRs(),
 			c.Informers.Networking().V1beta1().IPAddresses(),
-		).RunUntil
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		p.startServiceClusterIPRepair = ipRepairer.RunUntil
 	}
 
 	return p, nil
