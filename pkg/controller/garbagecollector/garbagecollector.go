@@ -135,7 +135,6 @@ func (gc *GarbageCollector) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
 	defer gc.attemptToDelete.ShutDown()
 	defer gc.attemptToOrphan.ShutDown()
-	defer gc.dependencyGraphBuilder.graphChanges.ShutDown()
 
 	// Start events processing pipeline.
 	gc.eventBroadcaster.StartStructuredLogging(3)
@@ -147,6 +146,7 @@ func (gc *GarbageCollector) Run(ctx context.Context, workers int) {
 	defer logger.Info("Shutting down controller", "controller", "garbagecollector")
 
 	go gc.dependencyGraphBuilder.Run(ctx)
+	defer gc.dependencyGraphBuilder.Shutdown()
 
 	if !cache.WaitForNamedCacheSync("garbage collector", ctx.Done(), func() bool {
 		return gc.dependencyGraphBuilder.IsSynced(logger)

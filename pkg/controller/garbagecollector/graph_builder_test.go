@@ -17,8 +17,23 @@ limitations under the License.
 package garbagecollector
 
 import (
+	"context"
 	"reflect"
 	"testing"
+	"time"
+
+	"go.uber.org/goleak"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/metadata"
+	"k8s.io/client-go/metadata/metadatainformer"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/controller-manager/pkg/informerfactory"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/test/utils/ktesting"
 )
 
 func TestGetAlternateOwnerIdentity(t *testing.T) {
@@ -209,4 +224,57 @@ func TestGetAlternateOwnerIdentity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGraphBuilder_Shutdown(t *testing.T) {
+	logger, tCtx := ktesting.NewTestContext(t)
+
+	config := &restclient.Config{}
+	metadataClient, err := metadata.NewForConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tweakableRM := meta.NewDefaultRESTMapper(nil)
+	rm := &testRESTMapper{meta.MultiRESTMapper{tweakableRM, testrestmapper.TestOnlyStaticRESTMapper(legacyscheme.Scheme)}}
+
+	podResource := map[schema.GroupVersionResource]struct{}{
+		{Version: "v1", Resource: "pods"}: {},
+	}
+
+	client := fake.NewSimpleClientset()
+	sharedInformers := informers.NewSharedInformerFactory(client, 0)
+	metadataInformers := metadatainformer.NewSharedInformerFactory(metadataClient, 0)
+	informerFactory := informerfactory.NewInformerFactory(sharedInformers, metadataInformers)
+
+	sharedInformers.Start(tCtx.Done())
+	metadataInformers.Start(tCtx.Done())
+	informerFactory.Start(tCtx.Done())
+
+	sharedInformers.WaitForCacheSync(tCtx.Done())
+	metadataInformers.WaitForCacheSync(tCtx.Done())
+
+	alwaysStarted := make(chan struct{})
+	close(alwaysStarted)
+
+	ctx, cancel := context.WithCancel(tCtx)
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	gb := NewDependencyGraphBuilder(
+		ctx,
+		metadataClient,
+		rm,
+		map[schema.GroupResource]struct{}{},
+		informerFactory,
+		alwaysStarted,
+	)
+	if err := gb.syncMonitors(logger, podResource); err != nil {
+		t.Errorf("unexpected error syncing monitors: %v", err)
+	}
+	go gb.Run(ctx)
+	for !gb.IsSynced(logger) {
+		time.Sleep(100 * time.Millisecond)
+	}
+	cancel()
+	// Give goroutines some time to finish
+	time.Sleep(100 * time.Millisecond)
 }
