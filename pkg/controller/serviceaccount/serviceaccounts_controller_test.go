@@ -21,7 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	"go.uber.org/goleak"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/informers"
@@ -233,6 +234,60 @@ func TestServiceAccountCreation(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestServiceAccountsController_Shutdown(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	defaultName := "default"
+	managedName := "managed"
+	defaultServiceAccount := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            defaultName,
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+	}
+	managedServiceAccount := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            managedName,
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := fake.NewSimpleClientset(defaultServiceAccount, managedServiceAccount)
+	informers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), controller.NoResyncPeriodFunc())
+	informers.Start(ctx.Done())
+
+	options := DefaultServiceAccountsControllerOptions()
+	options.ServiceAccounts = []v1.ServiceAccount{
+		{ObjectMeta: metav1.ObjectMeta{Name: defaultName}},
+		{ObjectMeta: metav1.ObjectMeta{Name: managedName}},
+	}
+	saInformer := informers.Core().V1().ServiceAccounts()
+	go saInformer.Informer().Run(ctx.Done())
+	nsInformer := informers.Core().V1().Namespaces()
+	go nsInformer.Informer().Run(ctx.Done())
+
+	informers.WaitForCacheSync(ctx.Done())
+	for !saInformer.Informer().HasSynced() || !nsInformer.Informer().HasSynced() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+	controller, err := NewServiceAccountsController(
+		saInformer,
+		nsInformer,
+		client,
+		options,
+	)
+	if err != nil {
+		t.Fatalf("error creating ServiceAccounts controller: %v", err)
+	}
+	controller.Shutdown()
 }
 
 var alwaysReady = func() bool { return true }

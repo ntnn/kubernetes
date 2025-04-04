@@ -76,6 +76,9 @@ func NewServiceAccountsController(saInformer kcpcorev1informers.ServiceAccountCl
 		DeleteFunc: e.serviceAccountDeleted,
 	}, options.ServiceAccountResync)
 	e.saLister = saInformer.Lister()
+	e.saRemoveRegistration = func() error {
+		return saInformer.Informer().RemoveEventHandler(saHandler)
+	}
 	e.saListerSynced = saHandler.HasSynced
 
 	nsHandler, _ := nsInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
@@ -83,6 +86,9 @@ func NewServiceAccountsController(saInformer kcpcorev1informers.ServiceAccountCl
 		UpdateFunc: e.namespaceUpdated,
 	}, options.NamespaceResync)
 	e.nsLister = nsInformer.Lister()
+	e.nsRemoveRegistration = func() error {
+		return nsInformer.Informer().RemoveEventHandler(nsHandler)
+	}
 	e.nsListerSynced = nsHandler.HasSynced
 
 	e.syncHandler = e.syncNamespace
@@ -98,11 +104,13 @@ type ServiceAccountsController struct {
 	// To allow injection for testing.
 	syncHandler func(ctx context.Context, key string) error
 
-	saLister       kcpcorev1listers.ServiceAccountClusterLister
-	saListerSynced cache.InformerSynced
+	saLister             kcpcorev1listers.ServiceAccountClusterLister
+	saRemoveRegistration func() error
+	saListerSynced       cache.InformerSynced
 
-	nsLister       kcpcorev1listers.NamespaceClusterLister
-	nsListerSynced cache.InformerSynced
+	nsLister             kcpcorev1listers.NamespaceClusterLister
+	nsRemoveRegistration func() error
+	nsListerSynced       cache.InformerSynced
 
 	queue workqueue.TypedRateLimitingInterface[string]
 }
@@ -110,7 +118,7 @@ type ServiceAccountsController struct {
 // Run runs the ServiceAccountsController blocks until receiving signal from stopCh.
 func (c *ServiceAccountsController) Run(ctx context.Context, workers int) {
 	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer c.Shutdown()
 
 	klog.FromContext(ctx).Info("Starting service account controller")
 	defer klog.FromContext(ctx).Info("Shutting down service account controller")
@@ -124,6 +132,12 @@ func (c *ServiceAccountsController) Run(ctx context.Context, workers int) {
 	}
 
 	<-ctx.Done()
+}
+
+func (c *ServiceAccountsController) Shutdown() {
+	c.queue.ShutDown()
+	c.saRemoveRegistration()
+	c.nsRemoveRegistration()
 }
 
 // serviceAccountDeleted reacts to a ServiceAccount deletion by recreating a default ServiceAccount in the namespace if needed
