@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/goleak"
 	"gopkg.in/square/go-jose.v2/jwt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -560,4 +561,35 @@ func TestTokenCreation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTokensController_Shutdown(t *testing.T) {
+
+	logger, ctx := ktesting.NewTestContext(t)
+	client := fake.NewSimpleClientset()
+	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
+	informers.Start(ctx.Done())
+	secretInformer := informers.Core().V1().Secrets().Informer()
+	go secretInformer.Run(ctx.Done())
+	serviceAccountInformer := informers.Core().V1().ServiceAccounts().Informer()
+	go serviceAccountInformer.Run(ctx.Done())
+
+	informers.WaitForCacheSync(ctx.Done())
+	for !secretInformer.HasSynced() || !serviceAccountInformer.HasSynced() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+	controller, err := NewTokensController(
+		logger,
+		informers.Core().V1().ServiceAccounts(),
+		informers.Core().V1().Secrets(),
+		client,
+		TokensControllerOptions{},
+	)
+	if err != nil {
+		t.Fatalf("error creating Tokens controller: %v", err)
+	}
+	controller.Shutdown()
+
 }

@@ -98,7 +98,7 @@ func NewTokensController(serviceAccounts kcpcorev1informers.ServiceAccountCluste
 
 	e.serviceAccounts = serviceAccounts.Lister()
 	e.serviceAccountSynced = serviceAccounts.Informer().HasSynced
-	serviceAccounts.Informer().AddEventHandlerWithResyncPeriod(
+	saRegistration, err := serviceAccounts.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    e.queueServiceAccountSync,
 			UpdateFunc: e.queueServiceAccountUpdateSync,
@@ -106,11 +106,17 @@ func NewTokensController(serviceAccounts kcpcorev1informers.ServiceAccountCluste
 		},
 		options.ServiceAccountResync,
 	)
+	if err != nil {
+		return nil, err
+	}
+	e.serviceAccountHandlerDeregistration = func() error {
+		return serviceAccounts.Informer().RemoveEventHandler(saRegistration)
+	}
 
 	secretCache := secrets.Informer().GetIndexer()
 	e.updatedSecrets = kcpthirdpartycache.NewIntegerResourceVersionMutationCache(kcpcache.DeletionHandlingMetaClusterNamespaceKeyFunc, secretCache, secretCache, 60*time.Second, true)
 	e.secretSynced = secrets.Informer().HasSynced
-	secrets.Informer().AddEventHandlerWithResyncPeriod(
+	secretRegistration, err := secrets.Informer().AddEventHandlerWithOptions(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -129,6 +135,12 @@ func NewTokensController(serviceAccounts kcpcorev1informers.ServiceAccountCluste
 		},
 		options.SecretResync,
 	)
+	if err != nil {
+		return nil, err
+	}
+	e.secretHandlerDeregistration = func() error {
+		return secrets.Informer().RemoveEventHandler(secretRegistration)
+	}
 
 	return e, nil
 }
@@ -140,11 +152,14 @@ type TokensController struct {
 
 	rootCA []byte
 
-	serviceAccounts kcpcorev1listers.ServiceAccountClusterLister
+	serviceAccounts                     kcpcorev1listers.ServiceAccountClusterLister
+	serviceAccountHandlerDeregistration func() error
 	// updatedSecrets is a wrapper around the shared cache which allows us to record
 	// and return our local mutations (since we're very likely to act on an updated
 	// secret before the watch reports it).
 	updatedSecrets kcpthirdpartycache.MutationCache
+
+	secretHandlerDeregistration func() error
 
 	// Since we join two objects, we'll watch both of them with controllers.
 	serviceAccountSynced cache.InformerSynced
@@ -167,10 +182,8 @@ type TokensController struct {
 
 // Run runs controller blocks until stopCh is closed
 func (e *TokensController) Run(ctx context.Context, workers int) {
-	// Shut down queues
 	defer utilruntime.HandleCrash()
-	defer e.syncServiceAccountQueue.ShutDown()
-	defer e.syncSecretQueue.ShutDown()
+	defer e.Shutdown()
 
 	if !cache.WaitForNamedCacheSync("tokens", ctx.Done(), e.serviceAccountSynced, e.secretSynced) {
 		return
@@ -184,6 +197,13 @@ func (e *TokensController) Run(ctx context.Context, workers int) {
 	}
 	<-ctx.Done()
 	logger.V(1).Info("Shutting down")
+}
+
+func (e *TokensController) Shutdown() {
+	e.syncServiceAccountQueue.ShutDown()
+	utilruntime.HandleError(e.serviceAccountHandlerDeregistration())
+	e.syncSecretQueue.ShutDown()
+	utilruntime.HandleError(e.secretHandlerDeregistration())
 }
 
 func (e *TokensController) queueServiceAccountSync(obj interface{}) {
