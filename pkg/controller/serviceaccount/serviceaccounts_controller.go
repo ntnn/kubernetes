@@ -76,7 +76,7 @@ func NewServiceAccountsController(saInformer kcpcorev1informers.ServiceAccountCl
 		DeleteFunc: e.serviceAccountDeleted,
 	}, options.ServiceAccountResync)
 	e.saLister = saInformer.Lister()
-	e.saRemoveRegistration = func() error {
+	e.saHandlerUnregister = func() error {
 		return saInformer.Informer().RemoveEventHandler(saHandler)
 	}
 	e.saListerSynced = saHandler.HasSynced
@@ -86,7 +86,7 @@ func NewServiceAccountsController(saInformer kcpcorev1informers.ServiceAccountCl
 		UpdateFunc: e.namespaceUpdated,
 	}, options.NamespaceResync)
 	e.nsLister = nsInformer.Lister()
-	e.nsRemoveRegistration = func() error {
+	e.nsHandlerUnregister = func() error {
 		return nsInformer.Informer().RemoveEventHandler(nsHandler)
 	}
 	e.nsListerSynced = nsHandler.HasSynced
@@ -104,13 +104,13 @@ type ServiceAccountsController struct {
 	// To allow injection for testing.
 	syncHandler func(ctx context.Context, key string) error
 
-	saLister             kcpcorev1listers.ServiceAccountClusterLister
-	saRemoveRegistration func() error
-	saListerSynced       cache.InformerSynced
+	saLister            kcpcorev1listers.ServiceAccountClusterLister
+	saHandlerUnregister func() error
+	saListerSynced      cache.InformerSynced
 
-	nsLister             kcpcorev1listers.NamespaceClusterLister
-	nsRemoveRegistration func() error
-	nsListerSynced       cache.InformerSynced
+	nsLister            kcpcorev1listers.NamespaceClusterLister
+	nsHandlerUnregister func() error
+	nsListerSynced      cache.InformerSynced
 
 	queue workqueue.TypedRateLimitingInterface[string]
 }
@@ -136,8 +136,8 @@ func (c *ServiceAccountsController) Run(ctx context.Context, workers int) {
 
 func (c *ServiceAccountsController) Shutdown() {
 	c.queue.ShutDown()
-	c.saRemoveRegistration()
-	c.nsRemoveRegistration()
+	c.saHandlerUnregister()
+	c.nsHandlerUnregister()
 }
 
 // serviceAccountDeleted reacts to a ServiceAccount deletion by recreating a default ServiceAccount in the namespace if needed

@@ -564,13 +564,15 @@ func TestTokenCreation(t *testing.T) {
 }
 
 func TestTokensController_Shutdown(t *testing.T) {
-
 	logger, ctx := ktesting.NewTestContext(t)
 	client := fake.NewSimpleClientset()
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
+
 	informers.Start(ctx.Done())
+
 	secretInformer := informers.Core().V1().Secrets().Informer()
 	go secretInformer.Run(ctx.Done())
+
 	serviceAccountInformer := informers.Core().V1().ServiceAccounts().Informer()
 	go serviceAccountInformer.Run(ctx.Done())
 
@@ -580,6 +582,7 @@ func TestTokensController_Shutdown(t *testing.T) {
 	}
 
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 	controller, err := NewTokensController(
 		logger,
 		informers.Core().V1().ServiceAccounts(),
@@ -590,6 +593,6 @@ func TestTokensController_Shutdown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error creating Tokens controller: %v", err)
 	}
-	controller.Shutdown()
 
+	controller.Shutdown()
 }

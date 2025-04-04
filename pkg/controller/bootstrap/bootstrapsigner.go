@@ -84,13 +84,13 @@ type Signer struct {
 	// and Secrets controllers.
 	syncQueue workqueue.TypedRateLimitingInterface[string]
 
-	secretLister             corelisters.SecretLister
-	secretSynced             cache.InformerSynced
-	secretInformerDeregister func() error
+	secretLister            corelisters.SecretLister
+	secretSynced            cache.InformerSynced
+	secretHandlerUnregister func() error
 
-	configMapLister             corelisters.ConfigMapLister
-	configMapSynced             cache.InformerSynced
-	configMapInformerDeregister func() error
+	configMapLister            corelisters.ConfigMapLister
+	configMapSynced            cache.InformerSynced
+	configMapHandlerUnregister func() error
 }
 
 // NewSigner returns a new *Signer.
@@ -113,7 +113,7 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 		),
 	}
 
-	cmInformerReg, err := configMaps.Informer().AddEventHandlerWithResyncPeriod(
+	cmHandler, err := configMaps.Informer().AddEventHandlerWithResyncPeriod(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -134,11 +134,11 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 	if err != nil {
 		return nil, err
 	}
-	e.configMapInformerDeregister = func() error {
-		return configMaps.Informer().RemoveEventHandler(cmInformerReg)
+	e.configMapHandlerUnregister = func() error {
+		return configMaps.Informer().RemoveEventHandler(cmHandler)
 	}
 
-	secretInformerReg, err := secrets.Informer().AddEventHandlerWithResyncPeriod(
+	secretHandler, err := secrets.Informer().AddEventHandlerWithResyncPeriod(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -160,8 +160,8 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 	if err != nil {
 		return nil, err
 	}
-	e.secretInformerDeregister = func() error {
-		return secrets.Informer().RemoveEventHandler(secretInformerReg)
+	e.secretHandlerUnregister = func() error {
+		return secrets.Informer().RemoveEventHandler(secretHandler)
 	}
 
 	return e, nil
@@ -169,8 +169,10 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 
 // Run runs controller loops and returns when they are done
 func (e *Signer) Run(ctx context.Context) {
-	logger := klog.FromContext(ctx)
+	defer utilruntime.HandleCrash()
 	defer e.Shutdown()
+
+	logger := klog.FromContext(ctx)
 	defer logger.V(1).Info("Shutting down")
 
 	if !cache.WaitForNamedCacheSync("bootstrap_signer", ctx.Done(), e.configMapSynced, e.secretSynced) {
@@ -183,11 +185,9 @@ func (e *Signer) Run(ctx context.Context) {
 }
 
 func (e *Signer) Shutdown() {
-	// TODO here or in Run?
-	defer utilruntime.HandleCrash()
 	e.syncQueue.ShutDown()
-	utilruntime.HandleError(e.configMapInformerDeregister())
-	utilruntime.HandleError(e.secretInformerDeregister())
+	utilruntime.HandleError(e.configMapHandlerUnregister())
+	utilruntime.HandleError(e.secretHandlerUnregister())
 }
 
 func (e *Signer) pokeConfigMapSync() {

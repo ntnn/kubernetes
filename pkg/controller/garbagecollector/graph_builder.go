@@ -119,9 +119,9 @@ type GraphBuilder struct {
 
 // monitor runs a Controller with a local stop channel.
 type monitor struct {
-	controller cache.Controller
-	store      cache.Store
-	deregister func() error
+	controller        cache.Controller
+	store             cache.Store
+	handlerUnregister func() error
 
 	// stopCh stops Controller. If stopCh is nil, the monitor is considered to be
 	// not yet started.
@@ -143,8 +143,8 @@ func (m *monitor) Stop() {
 		close(m.stopCh)
 	}
 	m.stopCh = nil
-	if m.deregister != nil {
-		utilruntime.HandleError(m.deregister())
+	if m.handlerUnregister != nil {
+		utilruntime.HandleError(m.handlerUnregister())
 	}
 }
 
@@ -246,11 +246,11 @@ func (gb *GraphBuilder) controllerFor(logger klog.Logger, resource schema.GroupV
 		return nil, nil, nil, err
 	}
 
-	deregister := func() error {
+	unregister := func() error {
 		return shared.Informer().RemoveEventHandler(handler)
 	}
 
-	return shared.Informer().GetController(), shared.Informer().GetStore(), deregister, nil
+	return shared.Informer().GetController(), shared.Informer().GetStore(), unregister, nil
 }
 
 // syncMonitors rebuilds the monitor set according to the supplied resources,
@@ -286,12 +286,12 @@ func (gb *GraphBuilder) syncMonitors(logger klog.Logger, resources map[schema.Gr
 			errs = append(errs, fmt.Errorf("couldn't look up resource %q: %v", resource, err))
 			continue
 		}
-		c, s, deregister, err := gb.controllerFor(logger, resource, kind)
+		c, s, handlerUnregister, err := gb.controllerFor(logger, resource, kind)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("couldn't start monitor for resource %q: %v", resource, err))
 			continue
 		}
-		current[resource] = &monitor{store: s, controller: c, deregister: deregister}
+		current[resource] = &monitor{store: s, controller: c, handlerUnregister: handlerUnregister}
 		added++
 	}
 	gb.monitors = current
@@ -369,9 +369,10 @@ func (gb *GraphBuilder) IsSynced(logger klog.Logger) bool {
 // Run sets the stop channel and starts monitor execution until stopCh is
 // closed. Any running monitors will be stopped before Run returns.
 func (gb *GraphBuilder) Run(ctx context.Context) {
+	defer gb.Shutdown()
+
 	logger := klog.FromContext(ctx)
 	logger.Info("Running", "component", "GraphBuilder")
-	defer gb.Shutdown()
 	defer logger.Info("Stopping", "component", "GraphBuilder")
 
 	// Set up the stop channel.
@@ -404,6 +405,7 @@ func (gb *GraphBuilder) Shutdown() {
 	}
 
 	// reset monitors so that the graph builder can be safely re-run/synced.
+	// TODO This should be redone maybe?
 	gb.monitors = nil
 	gb.running = false
 }

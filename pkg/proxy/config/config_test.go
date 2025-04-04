@@ -381,7 +381,6 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 	defer close(stopCh)
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
-	sharedInformers.Start(stopCh)
 
 	config := NewEndpointSliceConfig(ctx, sharedInformers.Discovery().V1().EndpointSlices(), time.Minute)
 	handler := NewEndpointSliceHandlerMock()

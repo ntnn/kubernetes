@@ -275,6 +275,4 @@ func TestGraphBuilder_Shutdown(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	cancel()
-	// Give goroutines some time to finish
-	time.Sleep(100 * time.Millisecond)
 }

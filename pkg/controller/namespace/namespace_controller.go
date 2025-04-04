@@ -58,7 +58,7 @@ type NamespaceController struct {
 	// returns true when the namespace cache is ready
 	listerSynced cache.InformerSynced
 	// removes the handlers for this controller from the informer
-	deregister func() error
+	handlerUnregister func() error
 	// namespaces that have been queued up for processing by workers
 	queue workqueue.TypedRateLimitingInterface[string]
 	// helper to delete all resources in the namespace when the namespace is deleted.
@@ -87,7 +87,7 @@ func NewNamespaceController(
 	}
 
 	// configure the namespace informer event handlers
-	registration, err := namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
+	handler, err := namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				namespace := obj.(*v1.Namespace)
@@ -106,8 +106,8 @@ func NewNamespaceController(
 
 	namespaceController.lister = namespaceInformer.Lister()
 	namespaceController.listerSynced = namespaceInformer.Informer().HasSynced
-	namespaceController.deregister = func() error {
-		return namespaceInformer.Informer().RemoveEventHandler(registration)
+	namespaceController.handlerUnregister = func() error {
+		return namespaceInformer.Informer().RemoveEventHandler(handler)
 	}
 
 	return namespaceController, nil
@@ -231,5 +231,5 @@ func (nm *NamespaceController) Run(ctx context.Context, workers int) {
 
 func (nm *NamespaceController) Shutdown() {
 	nm.queue.ShutDown()
-	nm.deregister()
+	nm.handlerUnregister()
 }

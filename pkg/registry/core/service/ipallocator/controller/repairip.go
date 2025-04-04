@@ -99,11 +99,11 @@ type RepairIPAddress struct {
 	ipAddressLister networkinglisters.IPAddressLister
 	ipAddressSynced cache.InformerSynced
 
-	svcQueue         workqueue.TypedRateLimitingInterface[string]
-	svcUnregister    func() error
-	ipQueue          workqueue.TypedRateLimitingInterface[string]
-	ipUnregister     func() error
-	workerLoopPeriod time.Duration
+	svcQueue             workqueue.TypedRateLimitingInterface[string]
+	svcHandlerUnregister func() error
+	ipQueue              workqueue.TypedRateLimitingInterface[string]
+	ipHandlerUnregister  func() error
+	workerLoopPeriod     time.Duration
 
 	broadcaster events.EventBroadcaster
 	recorder    events.EventRecorder
@@ -143,7 +143,7 @@ func NewRepairIPAddress(interval time.Duration,
 		clock:            clock.RealClock{},
 	}
 
-	svcRegistration, err := serviceInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
+	svcHandler, err := serviceInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
@@ -168,11 +168,11 @@ func NewRepairIPAddress(interval time.Duration,
 	if err != nil {
 		return nil, err
 	}
-	r.svcUnregister = func() error {
-		return serviceInformer.Informer().RemoveEventHandler(svcRegistration)
+	r.svcHandlerUnregister = func() error {
+		return serviceInformer.Informer().RemoveEventHandler(svcHandler)
 	}
 
-	ipRegistration, err := ipAddressInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
+	ipHandler, err := ipAddressInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
@@ -197,8 +197,8 @@ func NewRepairIPAddress(interval time.Duration,
 	if err != nil {
 		return nil, err
 	}
-	r.ipUnregister = func() error {
-		return ipAddressInformer.Informer().RemoveEventHandler(ipRegistration)
+	r.ipHandlerUnregister = func() error {
+		return ipAddressInformer.Informer().RemoveEventHandler(ipHandler)
 	}
 
 	return r, nil
@@ -250,10 +250,10 @@ func (r *RepairIPAddress) RunUntil(onFirstSuccess func(), stopCh chan struct{}) 
 
 func (r *RepairIPAddress) Shutdown() {
 	r.broadcaster.Shutdown()
+	runtime.HandleError(r.svcHandlerUnregister())
 	r.svcQueue.ShutDown()
-	runtime.HandleError(r.svcUnregister())
+	runtime.HandleError(r.ipHandlerUnregister())
 	r.ipQueue.ShutDown()
-	runtime.HandleError(r.ipUnregister())
 }
 
 // runOnce verifies the state of the ClusterIP allocations and returns an error if an unrecoverable problem occurs.

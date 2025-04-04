@@ -5299,7 +5299,7 @@ func TestMultipleHPAs(t *testing.T) {
 	assert.Len(t, processedHPA, hpaCount, "Expected to process all HPAs")
 }
 
-func TestShutdown(t *testing.T) {
+func TestHorizontalController_Shutdown(t *testing.T) {
 	kCtx := ktesting.Init(t)
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -5334,9 +5334,5 @@ func TestShutdown(t *testing.T) {
 		t.Errorf("Failed to create HPA controller: %v", err)
 	}
 
-	kCtx.Cancel("leak check")
 	hpaController.Shutdown()
-	// Wait for resyncPeriod so the queue workers have time to receive
-	// the shutdown signal
-	time.Sleep(resyncPeriod)
 }

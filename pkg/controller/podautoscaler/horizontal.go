@@ -87,6 +87,7 @@ type HorizontalController struct {
 	mapper          apimeta.RESTMapper
 
 	replicaCalc   *ReplicaCalculator
+	broadcaster   record.EventBroadcaster
 	eventRecorder record.EventRecorder
 
 	downscaleStabilisationWindow time.Duration
@@ -95,9 +96,9 @@ type HorizontalController struct {
 
 	// hpaLister is able to list/get HPAs from the shared cache from the informer passed in to
 	// NewHorizontalController.
-	hpaLister       autoscalinglisters.HorizontalPodAutoscalerLister
-	hpaListerSynced cache.InformerSynced
-	hpaUnregister   func() error
+	hpaLister            autoscalinglisters.HorizontalPodAutoscalerLister
+	hpaListerSynced      cache.InformerSynced
+	hpaHandlerUnregister func() error
 
 	// podLister is able to list/get Pods from the shared cache from the informer passed in to
 	// NewHorizontalController.
@@ -144,6 +145,7 @@ func NewHorizontalController(
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "horizontal-pod-autoscaler"})
 
 	hpaController := &HorizontalController{
+		broadcaster:                  broadcaster,
 		eventRecorder:                recorder,
 		scaleNamespacer:              scaleNamespacer,
 		hpaNamespacer:                hpaNamespacer,
@@ -165,7 +167,7 @@ func NewHorizontalController(
 		hpaSelectors:        selectors.NewBiMultimap(),
 	}
 
-	registration, err := hpaInformer.Informer().AddEventHandlerWithResyncPeriod(
+	handler, err := hpaInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    hpaController.enqueueHPA,
 			UpdateFunc: hpaController.updateHPA,
@@ -179,8 +181,8 @@ func NewHorizontalController(
 
 	hpaController.hpaLister = hpaInformer.Lister()
 	hpaController.hpaListerSynced = hpaInformer.Informer().HasSynced
-	hpaController.hpaUnregister = func() error {
-		return hpaInformer.Informer().RemoveEventHandler(registration)
+	hpaController.hpaHandlerUnregister = func() error {
+		return hpaInformer.Informer().RemoveEventHandler(handler)
 	}
 
 	hpaController.podLister = podInformer.Lister()
@@ -221,8 +223,9 @@ func (a *HorizontalController) Run(ctx context.Context, workers int) {
 }
 
 func (a *HorizontalController) Shutdown() {
-	utilruntime.HandleError(a.hpaUnregister())
+	utilruntime.HandleError(a.hpaHandlerUnregister())
 	a.queue.ShutDown()
+	a.broadcaster.Shutdown()
 }
 
 // obj could be an *v1.HorizontalPodAutoscaler, or a DeletionFinalStateUnknown marker item.

@@ -70,10 +70,10 @@ type EndpointSliceHandler interface {
 
 // EndpointSliceConfig tracks a set of endpoints configurations.
 type EndpointSliceConfig struct {
-	listerSynced               cache.InformerSynced
-	eventHandlers              []EndpointSliceHandler
-	eventHandlerDeregistration func() error
-	logger                     klog.Logger
+	listerSynced      cache.InformerSynced
+	eventHandlers     []EndpointSliceHandler
+	handlerUnregister func() error
+	logger            klog.Logger
 }
 
 // NewEndpointSliceConfig creates a new EndpointSliceConfig.
@@ -82,7 +82,7 @@ func NewEndpointSliceConfig(ctx context.Context, endpointSliceInformer discovery
 		logger: klog.FromContext(ctx),
 	}
 
-	handlerRegistration, _ := endpointSliceInformer.Informer().AddEventHandlerWithResyncPeriod(
+	handler, _ := endpointSliceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    result.handleAddEndpointSlice,
 			UpdateFunc: result.handleUpdateEndpointSlice,
@@ -90,11 +90,11 @@ func NewEndpointSliceConfig(ctx context.Context, endpointSliceInformer discovery
 		},
 		resyncPeriod,
 	)
-	result.eventHandlerDeregistration = func() error {
-		return endpointSliceInformer.Informer().RemoveEventHandler(handlerRegistration)
+	result.handlerUnregister = func() error {
+		return endpointSliceInformer.Informer().RemoveEventHandler(handler)
 	}
 
-	result.listerSynced = handlerRegistration.HasSynced
+	result.listerSynced = handler.HasSynced
 
 	return result
 }
@@ -123,7 +123,7 @@ func (c *EndpointSliceConfig) Run(stopCh <-chan struct{}) {
 }
 
 func (c *EndpointSliceConfig) Shutdown() {
-	utilruntime.HandleError(c.eventHandlerDeregistration())
+	utilruntime.HandleError(c.handlerUnregister())
 }
 
 func (c *EndpointSliceConfig) handleAddEndpointSlice(obj interface{}) {

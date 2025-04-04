@@ -1,7 +1,6 @@
 package namespace
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -10,9 +9,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/kubernetes/test/utils/ktesting"
 )
 
 func TestNamespaceController_Shutdown(t *testing.T) {
+	_, tCtx := ktesting.NewTestContext(t)
 
 	// Mock discoverResourcesFn to return a list of resources, without
 	// this the NamespacedResourcesDeleter will call os.Exit in
@@ -36,25 +37,18 @@ func TestNamespaceController_Shutdown(t *testing.T) {
 	fakeClientset := fake.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactory(fakeClientset, 0)
 
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-
-	// TODO cleanup
-	informerFactory.Start(stopCh)
+	informerFactory.Start(tCtx.Done())
 	namespaceInformer := informerFactory.Core().V1().Namespaces()
-	go namespaceInformer.Informer().Run(stopCh)
-	informerFactory.WaitForCacheSync(stopCh)
+	go namespaceInformer.Informer().Run(tCtx.Done())
+	informerFactory.WaitForCacheSync(tCtx.Done())
 	for !namespaceInformer.Informer().HasSynced() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	// TODO k8s testing context
-	ctx := context.Background()
-
 	nm, err := NewNamespaceController(
-		ctx,
+		tCtx,
 		fakeClientset,
 		nil, // metadata.Interface
 		discoverResourcesFn,

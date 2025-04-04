@@ -65,7 +65,7 @@ type TokenCleaner struct {
 	// secretLister is able to list/get secrets and is populated by the shared informer passed to NewTokenCleaner.
 	secretLister corelisters.SecretLister
 
-	secretInformerDeregister func() error
+	secretHandlerUnregister func() error
 
 	// secretSynced returns true if the secret shared informer has been synced at least once.
 	secretSynced cache.InformerSynced
@@ -88,7 +88,7 @@ func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInforme
 		),
 	}
 
-	secretInformerDeregister, err := secrets.Informer().AddEventHandlerWithResyncPeriod(
+	secretHandlerUnregister, err := secrets.Informer().AddEventHandlerWithResyncPeriod(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -109,8 +109,8 @@ func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInforme
 	if err != nil {
 		return nil, err
 	}
-	e.secretInformerDeregister = func() error {
-		return secrets.Informer().RemoveEventHandler(secretInformerDeregister)
+	e.secretHandlerUnregister = func() error {
+		return secrets.Informer().RemoveEventHandler(secretHandlerUnregister)
 	}
 
 	return e, nil
@@ -136,7 +136,7 @@ func (tc *TokenCleaner) Run(ctx context.Context) {
 
 func (tc *TokenCleaner) Shutdown() {
 	tc.queue.ShutDown()
-	utilruntime.HandleError(tc.secretInformerDeregister())
+	utilruntime.HandleError(tc.secretHandlerUnregister())
 }
 
 func (tc *TokenCleaner) enqueueSecrets(obj interface{}) {

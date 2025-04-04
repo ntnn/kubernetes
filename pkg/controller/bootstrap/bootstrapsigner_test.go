@@ -170,6 +170,5 @@ func TestSigner_Shutdown(t *testing.T) {
 	}
 	signer.Shutdown()
 
-	// TODO resync period
 	time.Sleep(100 * time.Millisecond)
 }

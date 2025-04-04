@@ -122,9 +122,8 @@ func NewMonitor(informersStarted <-chan struct{}, informerFactory informerfactor
 
 // monitor runs a Controller with a local stop channel.
 type monitor struct {
-	controller cache.Controller
-	// TODO(ntnn) : might be better options
-	unregister func() error
+	controller        cache.Controller
+	handlerUnregister func() error
 
 	// stopCh stops Controller. If stopCh is nil, the monitor is considered to be
 	// not yet started.
@@ -135,8 +134,7 @@ type monitor struct {
 // error.
 func (m *monitor) Run() {
 	m.controller.Run(m.stopCh)
-	// TODO handle err
-	m.unregister()
+	utilruntime.HandleError(m.handlerUnregister())
 }
 
 type monitors map[schema.GroupVersionResource]*monitor
@@ -181,13 +179,13 @@ func (qm *QuotaMonitor) controllerFor(ctx context.Context, resource schema.Group
 	}
 
 	logger.V(4).Info("QuotaMonitor using a shared informer", "resource", resource.String())
-	registration, err := shared.Informer().AddEventHandlerWithResyncPeriod(handlers, qm.resyncPeriod())
+	handler, err := shared.Informer().AddEventHandlerWithResyncPeriod(handlers, qm.resyncPeriod())
 	if err != nil {
 		logger.V(4).Error(err, "QuotaMonitor unable to register event handler", "resource", resource.String())
 		return nil, nil, fmt.Errorf("unable to register event handler for resource %q", resource.String())
 	}
 
-	return shared.Informer().GetController(), func() error { return shared.Informer().RemoveEventHandler(registration) }, nil
+	return shared.Informer().GetController(), func() error { return shared.Informer().RemoveEventHandler(handler) }, nil
 }
 
 // SyncMonitors rebuilds the monitor set according to the supplied resources,
@@ -220,7 +218,7 @@ func (qm *QuotaMonitor) SyncMonitors(ctx context.Context, resources map[schema.G
 			kept++
 			continue
 		}
-		c, unregister, err := qm.controllerFor(ctx, resource)
+		c, handlerUnregister, err := qm.controllerFor(ctx, resource)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("couldn't start monitor for resource %q: %v", resource, err))
 			continue
@@ -237,7 +235,7 @@ func (qm *QuotaMonitor) SyncMonitors(ctx context.Context, resources map[schema.G
 		}
 
 		// track the monitor
-		current[resource] = &monitor{controller: c, unregister: unregister}
+		current[resource] = &monitor{controller: c, handlerUnregister: handlerUnregister}
 		added++
 	}
 	qm.monitors = current

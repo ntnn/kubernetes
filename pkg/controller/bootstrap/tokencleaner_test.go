@@ -173,6 +173,4 @@ func TestTokenCleaner_Shutdown(t *testing.T) {
 		t.Fatalf("error creating TokenCleaner: %v", err)
 	}
 	cleaner.Shutdown()
-
-	time.Sleep(100 * time.Millisecond)
 }
