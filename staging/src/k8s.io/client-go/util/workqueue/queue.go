@@ -281,8 +281,10 @@ func (q *Typed[T]) Get() (item T, shutdown bool) {
 	for q.queue.Len() == 0 && !q.shuttingDown {
 		q.cond.Wait()
 	}
-	if q.queue.Len() == 0 {
-		// We must be shutting down.
+
+	// If queue is shutting exit immediately if we are not draining or
+	// the queue is empty.
+	if q.shuttingDown && (q.queue.Len() == 0 || !q.drain) {
 		return *new(T), true
 	}
 
@@ -342,6 +344,8 @@ func (q *Typed[T]) ShutDownWithDrain() {
 	q.shuttingDown = true
 	q.cond.Broadcast()
 
+	// q.drain is important for cases where .ShutDown is called after
+	// .ShutDownWithDrain to force the queue to shut down immediately.
 	for q.processing.len() != 0 && q.drain {
 		q.cond.Wait()
 	}

@@ -46,16 +46,19 @@ var _ workqueue.Queue[any] = &traceQueue{}
 
 func TestBasic(t *testing.T) {
 	tests := []struct {
-		queue         *workqueue.Type
-		queueShutDown func(workqueue.Interface)
+		queue           *workqueue.Type
+		queueShutDown   func(workqueue.Interface)
+		checkQueueEmpty bool
 	}{
 		{
-			queue:         workqueue.New(),
-			queueShutDown: workqueue.Interface.ShutDown,
+			queue:           workqueue.New(),
+			queueShutDown:   workqueue.Interface.ShutDown,
+			checkQueueEmpty: false,
 		},
 		{
-			queue:         workqueue.New(),
-			queueShutDown: workqueue.Interface.ShutDownWithDrain,
+			queue:           workqueue.New(),
+			queueShutDown:   workqueue.Interface.ShutDownWithDrain,
+			checkQueueEmpty: true,
 		},
 	}
 	for _, test := range tests {
@@ -102,7 +105,7 @@ func TestBasic(t *testing.T) {
 		test.queueShutDown(test.queue)
 		test.queue.Add("added after shutdown!")
 		consumerWG.Wait()
-		if test.queue.Len() != 0 {
+		if test.checkQueueEmpty && test.queue.Len() != 0 {
 			t.Errorf("Expected the queue to be empty, had: %v items", test.queue.Len())
 		}
 	}
@@ -110,16 +113,19 @@ func TestBasic(t *testing.T) {
 
 func TestAddWhileProcessing(t *testing.T) {
 	tests := []struct {
-		queue         *workqueue.Type
-		queueShutDown func(workqueue.Interface)
+		queue           *workqueue.Type
+		queueShutDown   func(workqueue.Interface)
+		checkQueueEmpty bool
 	}{
 		{
-			queue:         workqueue.New(),
-			queueShutDown: workqueue.Interface.ShutDown,
+			queue:           workqueue.New(),
+			queueShutDown:   workqueue.Interface.ShutDown,
+			checkQueueEmpty: false,
 		},
 		{
-			queue:         workqueue.New(),
-			queueShutDown: workqueue.Interface.ShutDownWithDrain,
+			queue:           workqueue.New(),
+			queueShutDown:   workqueue.Interface.ShutDownWithDrain,
+			checkQueueEmpty: true,
 		},
 	}
 	for _, test := range tests {
@@ -162,7 +168,7 @@ func TestAddWhileProcessing(t *testing.T) {
 		producerWG.Wait()
 		test.queueShutDown(test.queue)
 		consumerWG.Wait()
-		if test.queue.Len() != 0 {
+		if test.checkQueueEmpty && test.queue.Len() != 0 {
 			t.Errorf("Expected the queue to be empty, had: %v items", test.queue.Len())
 		}
 	}
@@ -349,6 +355,19 @@ func TestNoQueueDrainageUsingShutDown(t *testing.T) {
 	// We can now do this and not have the test timeout because we didn't call
 	// Done on the first two items before arriving here.
 	finishedWG.Wait()
+}
+
+func TestNoQueueDrainageUsingShutDownInstance(t *testing.T) {
+	q := workqueue.New()
+
+	q.Add("foo")
+	q.Add("bar")
+
+	q.ShutDown()
+
+	if _, shuttingDown := q.Get(); !shuttingDown {
+		t.Fatalf("expected shutdown signal")
+	}
 }
 
 func TestForceQueueShutdownUsingShutDown(t *testing.T) {
