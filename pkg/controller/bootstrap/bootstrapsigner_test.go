@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
+	"k8s.io/klog/v2/ktesting"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -161,14 +162,49 @@ func TestRemoveSignature(t *testing.T) {
 	verifyActions(t, expected, cl.Actions())
 }
 
-func TestSigner_Shutdown(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
-
-	signer, _, _, _, err := newSigner()
-	if err != nil {
-		t.Fatalf("error creating Signer: %v", err)
+func TestSignerLeak(t *testing.T) {
+	cases := map[string]struct {
+		runner func(ctx context.Context, s *Signer)
+	}{
+		"run": {
+			runner: func(ctx context.Context, s *Signer) { s.Run(ctx) },
+		},
+		"shutdown": {
+			runner: func(ctx context.Context, s *Signer) { s.Shutdown() },
+		},
 	}
-	signer.Shutdown()
 
-	time.Sleep(100 * time.Millisecond)
+	for title, cas := range cases {
+		t.Run(
+			title,
+			func(t *testing.T) {
+				_, tCtx := ktesting.NewTestContext(t)
+
+				cl := fake.NewSimpleClientset()
+
+				informerFactory := informers.NewSharedInformerFactory(cl, controller.NoResyncPeriodFunc())
+				secrets := informerFactory.Core().V1().Secrets()
+				configMaps := informerFactory.Core().V1().ConfigMaps()
+				informerFactory.Start(tCtx.Done())
+
+				informerFactory.WaitForCacheSync(tCtx.Done())
+
+				defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+				options := DefaultSignerOptions()
+				signer, err := NewSigner(cl, secrets, configMaps, options)
+				if err != nil {
+					t.Fatalf("error creating Signer: %v", err)
+				}
+
+				ctx, _ := context.WithTimeout(tCtx, 100*time.Millisecond)
+				cas.runner(ctx, signer)
+
+				// The queue metrics need a bit to notice the shutdown.
+				// Not sleeping can lead to erroneous goleak errors.
+				time.Sleep(100 * time.Millisecond)
+			},
+		)
+	}
+
 }
