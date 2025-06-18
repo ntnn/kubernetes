@@ -43,7 +43,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/ishidawataru/sctp v0.0.0-20230406120618-7ff4192f6ff2
 	github.com/kcp-dev/apimachinery/v2 v2.0.1-0.20250425065633-635c2a0fbaba
-	github.com/kcp-dev/client-go v0.0.0-20250425130236-70c5eb2b671e
+	github.com/kcp-dev/client-go v0.0.0-20250512170835-5457a0f4bd98
 	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	github.com/libopenstorage/openstorage v1.0.0
 	github.com/lithammer/dedent v1.1.0
