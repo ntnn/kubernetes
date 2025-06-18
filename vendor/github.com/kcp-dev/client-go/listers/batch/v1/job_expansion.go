@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -44,6 +44,38 @@ type JobListerExpansion interface {
 // will actually manage it.
 // Returns an error only if no matching Jobs are found.
 func (l *jobLister) GetPodJobs(pod *v1.Pod) (jobs []batch.Job, err error) {
+	if len(pod.Labels) == 0 {
+		err = fmt.Errorf("no jobs found for pod %v because it has no labels", pod.Name)
+		return
+	}
+
+	var list []*batch.Job
+	list, err = l.Jobs(pod.Namespace).List(labels.Everything())
+	if err != nil {
+		return
+	}
+	for _, job := range list {
+		selector, err := metav1.LabelSelectorAsSelector(job.Spec.Selector)
+		if err != nil {
+			// This object has an invalid selector, it does not match the pod
+			continue
+		}
+		if !selector.Matches(labels.Set(pod.Labels)) {
+			continue
+		}
+		jobs = append(jobs, *job)
+	}
+	if len(jobs) == 0 {
+		err = fmt.Errorf("could not find jobs for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+	}
+	return
+}
+
+// GetPodJobs returns a list of Jobs that potentially
+// match a Pod. Only the one specified in the Pod's ControllerRef
+// will actually manage it.
+// Returns an error only if no matching Jobs are found.
+func (l *jobScopedLister) GetPodJobs(pod *v1.Pod) (jobs []batch.Job, err error) {
 	if len(pod.Labels) == 0 {
 		err = fmt.Errorf("no jobs found for pod %v because it has no labels", pod.Name)
 		return

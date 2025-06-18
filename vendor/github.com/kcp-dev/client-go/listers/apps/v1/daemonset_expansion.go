@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -87,6 +87,83 @@ func (s *daemonSetLister) GetPodDaemonSets(pod *v1.Pod) ([]*apps.DaemonSet, erro
 // will actually manage it.
 // Returns an error only if no matching DaemonSets are found.
 func (s *daemonSetLister) GetHistoryDaemonSets(history *apps.ControllerRevision) ([]*apps.DaemonSet, error) {
+	if len(history.Labels) == 0 {
+		return nil, fmt.Errorf("no DaemonSet found for ControllerRevision %s because it has no labels", history.Name)
+	}
+
+	list, err := s.DaemonSets(history.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	var daemonSets []*apps.DaemonSet
+	for _, ds := range list {
+		selector, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
+		if err != nil {
+			// This object has an invalid selector, it does not match the history
+			continue
+		}
+		// If a DaemonSet with a nil or empty selector creeps in, it should match nothing, not everything.
+		if selector.Empty() || !selector.Matches(labels.Set(history.Labels)) {
+			continue
+		}
+		daemonSets = append(daemonSets, ds)
+	}
+
+	if len(daemonSets) == 0 {
+		return nil, fmt.Errorf("could not find DaemonSets for ControllerRevision %s in namespace %s with labels: %v", history.Name, history.Namespace, history.Labels)
+	}
+
+	return daemonSets, nil
+}
+
+// GetPodDaemonSets returns a list of DaemonSets that potentially match a pod.
+// Only the one specified in the Pod's ControllerRef will actually manage it.
+// Returns an error only if no matching DaemonSets are found.
+func (s *daemonSetScopedLister) GetPodDaemonSets(pod *v1.Pod) ([]*apps.DaemonSet, error) {
+	var selector labels.Selector
+	var daemonSet *apps.DaemonSet
+
+	if len(pod.Labels) == 0 {
+		return nil, fmt.Errorf("no daemon sets found for pod %v because it has no labels", pod.Name)
+	}
+
+	list, err := s.DaemonSets(pod.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	var daemonSets []*apps.DaemonSet
+	for i := range list {
+		daemonSet = list[i]
+		if daemonSet.Namespace != pod.Namespace {
+			continue
+		}
+		selector, err = metav1.LabelSelectorAsSelector(daemonSet.Spec.Selector)
+		if err != nil {
+			// This object has an invalid selector, it does not match the pod
+			continue
+		}
+
+		// If a daemonSet with a nil or empty selector creeps in, it should match nothing, not everything.
+		if selector.Empty() || !selector.Matches(labels.Set(pod.Labels)) {
+			continue
+		}
+		daemonSets = append(daemonSets, daemonSet)
+	}
+
+	if len(daemonSets) == 0 {
+		return nil, fmt.Errorf("could not find daemon set for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+	}
+
+	return daemonSets, nil
+}
+
+// GetHistoryDaemonSets returns a list of DaemonSets that potentially
+// match a ControllerRevision. Only the one specified in the ControllerRevision's ControllerRef
+// will actually manage it.
+// Returns an error only if no matching DaemonSets are found.
+func (s *daemonSetScopedLister) GetHistoryDaemonSets(history *apps.ControllerRevision) ([]*apps.DaemonSet, error) {
 	if len(history.Labels) == 0 {
 		return nil, fmt.Errorf("no DaemonSet found for ControllerRevision %s because it has no labels", history.Name)
 	}
