@@ -354,7 +354,7 @@ github.com/karrick/godirwalk
 # github.com/kcp-dev/apimachinery/v2 v2.0.1-0.20250425065633-635c2a0fbaba
 ## explicit; go 1.23.0
 # github.com/kcp-dev/apimachinery/v2 v2.0.1-0.20250512171935-ebb573a40077
-## go 1.23.0
+## explicit; go 1.23.0
 github.com/kcp-dev/apimachinery/v2/pkg/cache
 github.com/kcp-dev/apimachinery/v2/pkg/client
 github.com/kcp-dev/apimachinery/v2/third_party/informers
