@@ -32,6 +32,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/kcp-dev/logicalcluster/v3"
 )
 
 func init() {
@@ -74,10 +76,10 @@ func TestCreateMasterAuditPolicy(t *testing.T) {
 		apiserver           = newUserInfo(user.APIServerUser, user.SystemPrivilegedGroup)
 		autoscaler          = newUserInfo("cluster-autoscaler", user.AllAuthenticated)
 		npd                 = newUserInfo("system:node-problem-detector", user.AllAuthenticated)
-		npdSA               = serviceaccount.UserInfo("kube-system", "node-problem-detector", "")
-		namespaceController = serviceaccount.UserInfo("kube-system", "namespace-controller", "")
-		endpointController  = serviceaccount.UserInfo("kube-system", "endpoint-controller", "")
-		defaultSA           = serviceaccount.UserInfo("default", "default", "")
+		npdSA               = serviceaccount.UserInfo(logicalcluster.Name("root"), "kube-system", "node-problem-detector", "")
+		namespaceController = serviceaccount.UserInfo(logicalcluster.Name("root"), "kube-system", "namespace-controller", "")
+		endpointController  = serviceaccount.UserInfo(logicalcluster.Name("root"), "kube-system", "endpoint-controller", "")
+		defaultSA           = serviceaccount.UserInfo(logicalcluster.Name("root"), "default", "default", "")
 
 		allUsers = []user.Info{anonymous, kubeproxy, ingress, kubelet, node, controller, scheduler, apiserver, autoscaler, npd, npdSA, namespaceController, endpointController, defaultSA}
 	)
