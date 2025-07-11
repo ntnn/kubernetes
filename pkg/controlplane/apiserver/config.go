@@ -138,6 +138,11 @@ func BuildGenericConfig(
 		return
 	}
 
+	// KCP: Enable weighted content types.
+	// Prefer protobuf, then CBOR, then JSON.
+	// Protobuf for kube types, everything else uses CBOR if possible
+	// and JSON otherwise.
+	genericConfig.LoopbackClientConfig.ContentConfig.ContentType = "application/vnd.kubernetes.protobuf;q=1, application/cbor;q=0.9, application/json;q=0.8"
 	// Disable compression for self-communication, since we are going to be
 	// on a fast local network
 	genericConfig.LoopbackClientConfig.DisableCompression = true
