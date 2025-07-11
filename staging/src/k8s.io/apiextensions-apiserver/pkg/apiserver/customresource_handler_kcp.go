@@ -20,7 +20,9 @@ import (
 	structuralschema "k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer/cbor"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/apimachinery/pkg/runtime/serializer/protobuf"
 	"k8s.io/apimachinery/pkg/util/managedfields"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
@@ -47,6 +49,21 @@ func NewUnstructuredNegotiatedSerializer(
 		preserveUnknownFields: preserveUnknownFields,
 
 		supportedMediaTypes: []runtime.SerializerInfo{
+			{
+				MediaType:        "application/vnd.kubernetes.protobuf",
+				MediaTypeType:    "application",
+				MediaTypeSubType: "vnd.kubernetes.protobuf",
+				EncodesAsText:    false,
+				Serializer:       protobuf.NewSerializer(creator, typer),
+				PrettySerializer: protobuf.NewSerializer(creator, typer),
+				StrictSerializer: protobuf.NewSerializer(creator, typer),
+				StreamSerializer: &runtime.StreamSerializerInfo{
+					EncodesAsText: false,
+					Serializer:    protobuf.NewSerializerWithOptions(creator, typer, protobuf.SerializerOptions{StreamingCollectionsEncoding: true}),
+					Framer:        protobuf.LengthDelimitedFramer,
+				},
+			},
+			cbor.NewSerializerInfo(creator, typer),
 			{
 				MediaType:        "application/json",
 				MediaTypeType:    "application",
