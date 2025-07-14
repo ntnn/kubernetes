@@ -65,7 +65,7 @@ func (e *Exists) Validate(ctx context.Context, a admission.Attributes, o admissi
 
 	// we need to wait for our caches to warm
 	if !e.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request plugin/pkg/admission/namespace/exists/admission"))
 	}
 	_, err := e.namespaceLister.Get(a.GetNamespace())
 	if err == nil {

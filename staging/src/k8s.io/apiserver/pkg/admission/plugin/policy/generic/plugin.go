@@ -212,7 +212,7 @@ func (c *Plugin[H]) Dispatch(
 	} else if c.shouldIgnoreResource(a) {
 		return nil
 	} else if !c.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request staging/src/k8s.io/apiserver/pkg/admission/plugin/policy/generic/plugin.go"))
 	}
 
 	return c.dispatcher.Dispatch(ctx, a, o, c.source.Hooks())

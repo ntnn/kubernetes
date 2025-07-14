@@ -56,7 +56,7 @@ func (d *DisallowFlunder) Admit(ctx context.Context, a admission.Attributes, o a
 	}
 
 	if !d.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request staging/src/k8s.io/sample-apiserver/pkg/admission/plugin/banflunder"))
 	}
 
 	metaAccessor, err := meta.Accessor(a.GetObject())

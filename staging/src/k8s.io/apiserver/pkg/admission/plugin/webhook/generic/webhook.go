@@ -257,7 +257,7 @@ func (a *Webhook) Dispatch(ctx context.Context, attr admission.Attributes, o adm
 		return nil
 	}
 	if !a.WaitForReady() {
-		return admission.NewForbidden(attr, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(attr, fmt.Errorf("not yet ready to handle request staging/src/k8s.io/apiserver/pkg/admission/plugin/webhook/generic"))
 	}
 	hooks := a.hookSource.Webhooks()
 	return a.dispatcher.Dispatch(ctx, attr, o, hooks)

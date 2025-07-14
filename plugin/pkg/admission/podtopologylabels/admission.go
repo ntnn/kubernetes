@@ -118,7 +118,7 @@ func (p *Plugin) Admit(ctx context.Context, a admission.Attributes, o admission.
 	}
 	// we need to wait for our caches to warm
 	if !p.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request plugin/pkg/admission/podtopologylabels"))
 	}
 	// run type specific admission
 	return doAdmit(ctx, a, o)

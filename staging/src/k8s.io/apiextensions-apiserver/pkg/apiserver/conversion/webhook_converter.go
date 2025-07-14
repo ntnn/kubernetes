@@ -331,6 +331,7 @@ func (c *webhookConverter) Convert(in runtime.Object, toGV schema.GroupVersion) 
 				Metrics.ObserveConversionWebhookFailure(ctx, time.Since(t), ConversionWebhookInvalidConvertedObjectFailure)
 				return nil, fmt.Errorf("conversion webhook for %v returned invalid metadata in object at index %v: %v", in.GetObjectKind().GroupVersionKind(), convertedIndex, err)
 			}
+			setOriginalAPIVersion(unstructConverted, original.GetAPIVersion(), toGV) // kcp
 			convertedIndex++
 			convertedList.Items[i] = *unstructConverted
 		}

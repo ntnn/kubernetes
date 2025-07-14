@@ -141,8 +141,9 @@ func BuildGenericConfig(
 	// KCP: Enable weighted content types.
 	// Prefer protobuf, then CBOR, then JSON.
 	// Protobuf for kube types, everything else uses CBOR if possible
-	// and JSON otherwise.
-	genericConfig.LoopbackClientConfig.ContentConfig.ContentType = "application/vnd.kubernetes.protobuf;q=1, application/cbor;q=0.9, application/json;q=0.8"
+	// and JSON otherwise. TODO
+	// genericConfig.LoopbackClientConfig.ContentConfig.ContentType = "application/cbor"
+	// genericConfig.LoopbackClientConfig.ContentConfig.AcceptContentTypes = "application/vnd.kubernetes.protobuf;q=1, application/cbor;q=0.9, application/json;q=0.8"
 	// Disable compression for self-communication, since we are going to be
 	// on a fast local network
 	genericConfig.LoopbackClientConfig.DisableCompression = true
@@ -234,10 +235,6 @@ func BuildGenericConfig(
 		return
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(genericfeatures.APIPriorityAndFairness) && s.GenericServerRunOptions.EnablePriorityAndFairness {
-		genericConfig.FlowControl, lastErr = BuildPriorityAndFairness(s, clusterClient.Cluster(LocalAdminCluster.Path()), informerfactoryhack.Wrap(versionedInformers))
-	}
-
 	genericConfig.AggregatedDiscoveryGroupManager = aggregated.NewResourceManager("apis")
 
 	return
@@ -319,9 +316,8 @@ func CreateConfig(
 			return nil, nil, err
 		}
 		if opts.PeerCAFile != "" {
-			leaseInformer := versionedInformers.Coordination().V1().Leases()
 			config.PeerProxy, err = BuildPeerProxy(
-				informerfactoryhack.Wrap(leaseInformer),
+				informerfactoryhack.Wrap(versionedInformers).Coordination().V1().Leases(), // KCP
 				genericConfig.LoopbackClientConfig,
 				opts.ProxyClientCertFile,
 				opts.ProxyClientKeyFile, opts.PeerCAFile,

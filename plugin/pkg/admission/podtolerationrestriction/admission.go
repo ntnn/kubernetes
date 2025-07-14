@@ -79,7 +79,7 @@ func (p *Plugin) Admit(ctx context.Context, a admission.Attributes, o admission.
 	}
 
 	if !p.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request plugin/pkg/admission/podtolerationrestriction 1"))
 	}
 
 	pod := a.GetObject().(*api.Pod)
@@ -120,7 +120,7 @@ func (p *Plugin) Validate(ctx context.Context, a admission.Attributes, o admissi
 	}
 
 	if !p.WaitForReady() {
-		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
+		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request plugin/pkg/admission/podtolerationrestriction 2"))
 	}
 
 	// whitelist verification.

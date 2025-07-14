@@ -1,24 +1,9 @@
-/*
-Copyright 2025 The KCP Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package conversion
 
 import (
 	"fmt"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -28,20 +13,73 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 )
 
-// TODO: Convert is a NOP converter that additionally stores the original APIVersion of each item in the annotation
-// kcp.io/original-api-version. This is necessary for kcp with wildcard partial metadata list/watch requests.
-// For example, if the request is for /clusters/*/apis/kcp.io/v1/widgets, and it's a partial metadata request, the
-// server returns ALL widgets, regardless of their API version. But because this is a partial metadata request, the
-// API version of the returned object is always meta.k8s.io/$version (could be v1 or v1beta1). Any client needing to
-// modify or delete the returned object must know its exact API version. Therefore, we set this annotation with the
-// actual original API version of the object. Clients can use it when constructing dynamic clients to guarantee they
-// are using the correct API version.
-
-func (c *crConverter) kcpConvertToVersion() (runtime.Object, error) {
-	return nil, nil
+// setOriginalAPIVersion stores the original APIVersion of an itme in
+// the annotation kcp.io/original-api-version.
+//
+// This is necessary for kcp with wildcard partial metadata list/watch
+// requests. For example, if the request is for
+// /clusters/*/apis/kcp.io/v1/widgets, and it's a partial metadata
+// request, the server returns ALL widgets, regardless of their API
+// version. But because this is a partial metadata request, the API
+// version of the returned object is always meta.k8s.io/$version (could
+// be v1 or v1beta1). Any client needing to modify or delete the
+// returned object must know its exact API version. Therefore, we set
+// this annotation with the actual original API version of the object.
+// Clients can use it when constructing dynamic clients to guarantee
+// they are using the correct API version.
+func setOriginalAPIVersion(obj *unstructured.Unstructured, originalAPIVersion string, targetGV schema.GroupVersion) {
+	ann := obj.GetAnnotations()
+	if ann == nil {
+		ann = make(map[string]string)
+	}
+	ann[handlers.KCPOriginalAPIVersionAnnotation] = originalAPIVersion
+	obj.SetAnnotations(ann)
+	obj.SetGroupVersionKind(targetGV.WithKind(obj.GetKind()))
 }
 
-func getObjectsToConvert(
+// Factory is the interface for CRConverterFactory.
+//
+// KCP passes its own noop CRConverterFactory to the
+// apiextension-apiserver.
+type Factory interface {
+	// NewConverter returns a CRConverter capable of converting crd's versions.
+	//
+	// For proper conversion, the returned CRConverter must be used via NewDelegatingConverter.
+	//
+	// When implementing a CRConverter, you do not need to: test for valid API versions or no-op
+	// conversions, handle field selector logic, or handle scale conversions; these are all handled
+	// via NewDelegatingConverter.
+	NewConverter(crd *apiextensionsv1.CustomResourceDefinition) (runtime.ObjectConvertor, runtime.ObjectConvertor, error)
+}
+
+// Ensure that the upstream implementation satisfies the interface. If
+// it doesn't the interface and the CRConverterFactory in the KCP code
+// has to be updated.
+var _ Factory = &CRConverterFactory{}
+
+// Type alias to export the interface
+// TODO(ntnn): Only needed for the schemaBasedConverter in KCP.
+type CRConverterInterface crConverterInterface
+
+// Export safeConverterWrapper for KCP to use.
+func NewSafeConverterWrapper(unsafe runtime.ObjectConvertor) runtime.ObjectConvertor {
+	return &safeConverterWrapper{
+		unsafe: unsafe,
+	}
+}
+
+func NewCRConverter(converter CRConverterInterface) runtime.ObjectConvertor {
+	return &crConverter{
+		converter: converter,
+	}
+}
+
+func NewNOPConverter() runtime.ObjectConvertor {
+	return NewCRConverter(&nopConverter{})
+}
+
+// TODO(ntnn): A very similar function exists now in webhook_conversion.go.
+func kcpGetObjectsToConvert(
 	list *unstructured.UnstructuredList,
 	desiredAPIVersion string,
 	validVersions map[schema.GroupVersion]bool,
@@ -54,17 +92,6 @@ func getObjectsToConvert(
 			return nil, fmt.Errorf("request to convert CR list failed, list index %d has invalid group/version: %s", i, expectedGV.String())
 		}
 
-		// First preserve the actual API version
-		annotations := item.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string)
-		}
-		annotations[handlers.KCPOriginalAPIVersionAnnotation] = item.GetAPIVersion()
-		item.SetAnnotations(annotations)
-
-		// Now that we've preserved it, we can change it to the targetGV.
-		item.SetGroupVersionKind(targetGV.WithKind(item.GroupVersionKind().Kind))
-
 		// Only sent item for conversion, if the apiVersion is different
 		if list.Items[i].GetAPIVersion() != desiredAPIVersion {
 			objectsToConvert = append(objectsToConvert, list.Items[i])
@@ -73,45 +100,8 @@ func getObjectsToConvert(
 	return objectsToConvert, nil
 }
 
-// isEmptyUnstructuredObject returns true if in is an empty unstructured object, i.e. an unstructured object that does
-// not have any field except apiVersion and kind.
-func isEmptyUnstructuredObject(in runtime.Object) bool {
-	u, ok := in.(*unstructured.Unstructured)
-	if !ok {
-		return false
-	}
-	if len(u.Object) != 2 {
-		return false
-	}
-	if _, ok := u.Object["kind"]; !ok {
-		return false
-	}
-	if _, ok := u.Object["apiVersion"]; !ok {
-		return false
-	}
-	return true
-}
-
-// validateConvertedObject checks that ObjectMeta fields match, with the exception of
-// labels and annotations.
-func validateConvertedObject(in, out *unstructured.Unstructured) error {
-	if e, a := in.GetKind(), out.GetKind(); e != a {
-		return fmt.Errorf("must have the same kind: %v != %v", e, a)
-	}
-	if e, a := in.GetName(), out.GetName(); e != a {
-		return fmt.Errorf("must have the same name: %v != %v", e, a)
-	}
-	if e, a := in.GetNamespace(), out.GetNamespace(); e != a {
-		return fmt.Errorf("must have the same namespace: %v != %v", e, a)
-	}
-	if e, a := in.GetUID(), out.GetUID(); e != a {
-		return fmt.Errorf("must have the same UID: %v != %v", e, a)
-	}
-	return nil
-}
-
 // restoreObjectMeta copies metadata from original into converted, while preserving labels and annotations from converted.
-func restoreObjectMeta(original, converted *unstructured.Unstructured) error {
+func kcpRestoreObjectMeta(original, converted *unstructured.Unstructured) error {
 	cm, found := converted.Object["metadata"]
 	om, previouslyFound := original.Object["metadata"]
 	switch {

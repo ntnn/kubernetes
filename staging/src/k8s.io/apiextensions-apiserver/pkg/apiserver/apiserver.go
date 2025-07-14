@@ -91,8 +91,12 @@ type ExtraConfig struct {
 	// AuthResolverWrapper is used in CR webhook converters
 	AuthResolverWrapper webhook.AuthenticationInfoResolverWrapper
 
+	// kcp: Replace ServiceResolver and AuthResolverWrapper with
+	// ConversionFactory to allow KCP to pass in a noop factory in the
+	// cache server.
 	// ConversionFactory is used to provider converters for CRs.
 	ConversionFactory conversion.Factory
+	// end kcp
 
 	Client    kcpapiextensionsv1client.ClusterInterface
 	Informers kcpapiextensionsv1informers.SharedInformerFactory
@@ -263,7 +267,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	if aggregatedDiscoveryManager != nil {
 		aggregatedDiscoveryManager = aggregatedDiscoveryManager.WithSource(aggregated.CRDSource)
 	}
-	discoveryController := NewDiscoveryController(s.Informers.Apiextensions().V1().CustomResourceDefinitions(), versionDiscoveryHandler, groupDiscoveryHandler, aggregatedDiscoveryManager)
 	namingController := status.NewNamingConditionController(klog.TODO() /* for contextual logging */, s.Informers.Apiextensions().V1().CustomResourceDefinitions(), crdClient.ApiextensionsV1(), s.ClusterAwareCRDLister)
 
 	// HACK: Added to allow serving core resources registered through CRDs (for the KCP scenario)

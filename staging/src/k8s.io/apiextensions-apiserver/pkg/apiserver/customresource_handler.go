@@ -206,11 +206,9 @@ func NewCustomResourceDefinitionHandler(
 	requestTimeout time.Duration,
 	minRequestTimeout time.Duration,
 	staticOpenAPISpec map[string]*spec.Schema,
-	maxRequestBodyBytes int64) (*crdHandler, error) {
-	if converterFactory == nil {
-		return nil, fmt.Errorf("converterFactory is required")
-	}
-
+	maxRequestBodyBytes int64,
+	disableServerSideApply bool,
+) (*crdHandler, error) {
 	ret := &crdHandler{
 		versionDiscoveryHandler: versionDiscoveryHandler,
 		groupDiscoveryHandler:   groupDiscoveryHandler,
@@ -922,7 +920,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensionsv1.CustomResour
 		}
 	}
 
-	safeConverter, unsafeConverter, err := r.converterFactory.NewKCPConverter(crd)
+	safeConverter, unsafeConverter, err := r.converterFactory.NewConverter(crd)
 	if err != nil {
 		return nil, err
 	}

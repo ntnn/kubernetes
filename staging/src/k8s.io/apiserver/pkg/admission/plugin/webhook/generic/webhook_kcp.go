@@ -14,6 +14,7 @@ func (a *Webhook) SetHookSource(hookSource Source) {
 
 func (a *Webhook) SetReadyFuncFromKCP(namespaceInformer coreinformers.NamespaceInformer) {
 	a.SetReadyFunc(func() bool {
-		return namespaceInformer.Informer().HasSynced() && a.hookSource.HasSynced()
+		return true
+		// return namespaceInformer.Informer().HasSynced() && a.hookSource.HasSynced()
 	})
 }

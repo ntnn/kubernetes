@@ -31,9 +31,9 @@ import (
 	"k8s.io/kubernetes/pkg/controller/garbagecollector/metrics"
 )
 
-func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.ServerResourcesInterface, period time.Duration) {
+func (gc *GarbageCollector) ResyncMonitors(ctx context.Context, discoveryClient discovery.ServerResourcesInterface) error {
 	oldResources := make(map[schema.GroupVersionResource]struct{})
-	wait.UntilWithContext(ctx, func(ctx context.Context) {
+	return func() error {
 		logger := klog.FromContext(ctx)
 
 		// Get the current resource list from discovery.
@@ -110,7 +110,7 @@ func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.
 			// informers keep attempting to sync in the background, so retrying doesn't interrupt them.
 			// the call to resyncMonitors on the reattempt will no-op for resources that still exist.
 			// note that workers stay paused until we successfully resync.
-			if !cache.WaitForNamedCacheSync("garbage collector", waitForStopOrTimeout(ctx.Done(), period), func() bool {
+			if !cache.WaitForNamedCacheSync("garbage collector", ctx.Done(), func() bool {
 				return gc.dependencyGraphBuilder.IsSynced(logger)
 			}) {
 				utilruntime.HandleError(fmt.Errorf("timed out waiting for dependency graph builder sync during GC sync (attempt %d)", attempt))
@@ -127,5 +127,7 @@ func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.
 		// subsequent runs should stop them if their resources were removed.
 		oldResources = newResources
 		logger.V(2).Info("synced garbage collector")
-	}, period)
+
+		return nil
+	}()
 }
