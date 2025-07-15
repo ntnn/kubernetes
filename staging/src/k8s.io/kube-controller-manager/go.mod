@@ -17,6 +17,8 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.0.0
+	github.com/kcp-dev/client-go v0.0.0-20250707095244-decc4df45adb
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -45,3 +47,7 @@ replace (
 	k8s.io/controller-manager => ../controller-manager
 	k8s.io/kms => ../kms
 )
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/kcp-work/kcp-client-go
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/kcp-work/kcp-apimachinery

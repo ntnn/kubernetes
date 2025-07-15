@@ -23,3 +23,7 @@ require (
 )
 
 replace k8s.io/kms => ../../../../kms
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/kcp-work/kcp-client-go
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/kcp-work/kcp-apimachinery

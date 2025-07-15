@@ -56,3 +56,7 @@ replace (
 	k8s.io/apimachinery => ../../apimachinery
 	k8s.io/client-go => ../../client-go
 )
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/kcp-work/kcp-client-go
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/kcp-work/kcp-apimachinery

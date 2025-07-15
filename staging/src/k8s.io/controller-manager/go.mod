@@ -50,6 +50,8 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.0.0
+	github.com/kcp-dev/client-go v0.0.0-20250707095244-decc4df45adb
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -110,3 +112,7 @@ replace (
 	k8s.io/component-base => ../component-base
 	k8s.io/kms => ../kms
 )
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/kcp-work/kcp-client-go
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/kcp-work/kcp-apimachinery
