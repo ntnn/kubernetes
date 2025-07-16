@@ -18,7 +18,7 @@ require (
 	github.com/kcp-dev/apimachinery/v2 v2.0.1-0.20250512171935-ebb573a40077
 	github.com/kcp-dev/client-go v0.0.0-20250707095244-decc4df45adb
 	github.com/kcp-dev/logicalcluster/v3 v3.0.5
-	github.com/ntnn/go-ntnn v0.0.0-20250705190826-4823019efae2
+	github.com/ntnn/go-ntnn v0.0.0-20250716073514-f65c5d6c1dad
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
