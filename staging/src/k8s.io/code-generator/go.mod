@@ -35,7 +35,6 @@ require (
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/ntnn/go-ntnn v0.0.0-20250716082524-a34986aa789a
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.39.0 // indirect

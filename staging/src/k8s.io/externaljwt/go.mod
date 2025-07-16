@@ -14,7 +14,6 @@ require (
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/ntnn/go-ntnn v0.0.0-20250716082524-a34986aa789a
 	go.opentelemetry.io/otel v1.33.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.33.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
