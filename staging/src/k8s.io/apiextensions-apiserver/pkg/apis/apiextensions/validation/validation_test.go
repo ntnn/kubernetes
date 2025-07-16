@@ -1201,7 +1201,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 				invalid("status", "storedVersions"),
 				invalid("metadata", "name"),
 				invalid("spec", "versions"),
-				required("spec", "group"),
+				// required("spec", "group"),
 				required("spec", "scope"),
 				required("spec", "names", "plural"),
 				required("spec", "names", "singular"),

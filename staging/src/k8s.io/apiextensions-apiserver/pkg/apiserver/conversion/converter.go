@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ntnn/go-ntnn"
+
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
@@ -179,11 +181,16 @@ func (c *crConverter) Convert(in, out, context interface{}) error {
 	return nil
 }
 
+func init() {
+	ntnn.LogToFile = "/Users/I567861/SAPDevelop/code/kcp-work/ntnn.log"
+}
+
 // ConvertToVersion converts in object to the given gvk in place and returns the same `in` object.
 // The in object can be a single object or a UnstructuredList. CRD storage implementation creates an
 // UnstructuredList with the request's GV, populates it from storage, then calls conversion to convert
 // the individual items. This function assumes it never gets a v1.List.
 func (c *crConverter) ConvertToVersion(in runtime.Object, target runtime.GroupVersioner) (runtime.Object, error) {
+	ntnn.Logf("entering ConvertToVersion %#v to %#v", in, target)
 	fromGVK := in.GetObjectKind().GroupVersionKind()
 	toGVK, ok := target.KindForGroupVersionKinds([]schema.GroupVersionKind{fromGVK})
 	if !ok {
@@ -192,6 +199,7 @@ func (c *crConverter) ConvertToVersion(in runtime.Object, target runtime.GroupVe
 	}
 	// Special-case typed scale conversion if this custom resource supports a scale endpoint
 	if c.convertScale {
+		ntnn.Logf("c.convertScale")
 		if _, isInScale := in.(*autoscalingv1.Scale); isInScale {
 			return typedscheme.Scheme.ConvertToVersion(in, target)
 		}
@@ -210,30 +218,36 @@ func (c *crConverter) ConvertToVersion(in runtime.Object, target runtime.GroupVe
 	}
 
 	if c.requireValidVersion && !c.validVersions[toGVK.GroupVersion()] {
+		ntnn.Logf("invalid toGVK: %s", toGVK.GroupVersion().String())
 		return nil, fmt.Errorf("request to convert CR to an invalid group/version: %s", toGVK.GroupVersion().String())
 	}
 	// Note that even if the request is for a list, the GV of the request UnstructuredList is what
 	// is expected to convert to. As mentioned in the function's document, it is not expected to
 	// get a v1.List.
 	if c.requireValidVersion && !c.validVersions[fromGVK.GroupVersion()] {
+		ntnn.Logf("invalid fromGVK: %s", fromGVK.GroupVersion().String())
 		return nil, fmt.Errorf("request to convert CR from an invalid group/version: %s", fromGVK.GroupVersion().String())
 	}
 
 	desiredAPIVersion := toGVK.GroupVersion().String()
 	objectsToConvert, err := kcpGetObjectsToConvert(list, desiredAPIVersion, c.validVersions, c.requireValidVersion)
 	if err != nil {
+		ntnn.Logf("objectsToConvert error: %#v", err)
 		return nil, err
 	}
 
 	objCount := len(objectsToConvert)
 	if objCount == 0 {
+		ntnn.Log("no objects to convert")
 		// no objects needed conversion
 		if !isList {
 			// for a single item, return as-is
+			ntnn.Logf("single item, return as is")
 			return in, nil
 		}
 		// for a list, set the version of the top-level list object (all individual objects are already in the correct version)
 		list.SetAPIVersion(desiredAPIVersion)
+		ntnn.Logf("return list")
 		return list, nil
 	}
 
@@ -272,10 +286,12 @@ func (c *crConverter) ConvertToVersion(in runtime.Object, target runtime.GroupVe
 
 	convertedObjectsList, ok := convertedObjects.(*unstructured.UnstructuredList)
 	if !ok {
+		ntnn.Logf("returned object is no longer a list: %#v", convertedObjects)
 		return nil, fmt.Errorf("conversion for %v returned an unexpected type %T, expected *unstructured.UnstructuredList", in.GetObjectKind().GroupVersionKind(), convertedObjects)
 	}
 
 	if len(convertedObjectsList.Items) != len(objectsToConvert) {
+		ntnn.Log("number of returned objects does not match number of passed objects")
 		return nil, fmt.Errorf("conversion for %v returned %d objects, expected %d", in.GetObjectKind().GroupVersionKind(), len(convertedObjectsList.Items), len(objectsToConvert))
 	}
 

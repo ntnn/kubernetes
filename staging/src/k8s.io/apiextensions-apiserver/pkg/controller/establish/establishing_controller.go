@@ -26,6 +26,7 @@ import (
 	kcpapiextensionsv1informers "github.com/kcp-dev/client-go/apiextensions/informers/apiextensions/v1"
 	kcpapiextensionsv1listers "github.com/kcp-dev/client-go/apiextensions/listers/apiextensions/v1"
 	"github.com/kcp-dev/logicalcluster/v3"
+	"github.com/ntnn/go-ntnn"
 
 	apiextensionshelpers "k8s.io/apiextensions-apiserver/pkg/apihelpers"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -83,9 +84,11 @@ func (ec *EstablishingController) Run(stopCh <-chan struct{}) {
 	klog.Info("Starting EstablishingController")
 	defer klog.Info("Shutting down EstablishingController")
 
+	ntnn.Log("establishing controller starts waiting for cache sync")
 	if !cache.WaitForCacheSync(stopCh, ec.crdSynced) {
 		return
 	}
+	ntnn.Log("establishing controller is done waiting for cache sync")
 
 	// only start one worker thread since its a slow moving API
 	go wait.Until(ec.runWorker, time.Second, stopCh)
@@ -101,10 +104,12 @@ func (ec *EstablishingController) runWorker() {
 // processNextWorkItem deals with one key off the queue.
 // It returns false when it's time to quit.
 func (ec *EstablishingController) processNextWorkItem() bool {
+	ntnn.Logf("establish: waiting for key")
 	key, quit := ec.queue.Get()
 	if quit {
 		return false
 	}
+	ntnn.Logf("establish: waiting done, got %q", key)
 	defer ec.queue.Done(key)
 
 	err := ec.syncFn(key)
@@ -121,23 +126,30 @@ func (ec *EstablishingController) processNextWorkItem() bool {
 
 // sync is used to turn CRDs into the Established state.
 func (ec *EstablishingController) sync(key string) error {
+	ntnn.Logf("establish: key %q", key)
 	clusterName, _, name, err := kcpcache.SplitMetaClusterNamespaceKey(key)
 	if err != nil {
+		ntnn.Logf("establish: key %q: err %v", key, err)
 		utilruntime.HandleError(err)
 		return nil
 	}
+	ntnn.Logf("establish: key %q: clusterName %q name %q", key, clusterName, name)
 	cachedCRD, err := ec.crdLister.Cluster(clusterName).Get(name)
 	if apierrors.IsNotFound(err) {
+		ntnn.Logf("establish: key %q crd not found", key)
 		return nil
 	}
 	if err != nil {
+		ntnn.Logf("establish: key %q error getting crd: %v", key, err)
 		return err
 	}
 
 	if !apiextensionshelpers.IsCRDConditionTrue(cachedCRD, apiextensionsv1.NamesAccepted) ||
 		apiextensionshelpers.IsCRDConditionTrue(cachedCRD, apiextensionsv1.Established) {
+		ntnn.Logf("establish: key %q condition names / established not true", key)
 		return nil
 	}
+	ntnn.Logf("establish: key %q condition names / established true, proceeding", key)
 
 	crd := cachedCRD.DeepCopy()
 
