@@ -196,11 +196,11 @@ linters-settings: # please keep this alphabetized
           # running the verify-golangci-lint.sh script multiple times, otherwise
           # golangci-lint will report stale results:
           #    _output/local/bin/golangci-lint cache clean
-          
+
           # At this point we don't enforce the usage structured logging calls except in
           # those packages that were migrated. This disables the check for other files.
           -structured .*
-          
+
           # Now enable it again for migrated packages.
           structured k8s.io/kubernetes/cmd/kubelet/.*
           structured k8s.io/kubernetes/pkg/kubelet/.*
@@ -208,7 +208,7 @@ linters-settings: # please keep this alphabetized
           structured k8s.io/kms/.*
           structured k8s.io/apiserver/pkg/storage/value/.*
           structured k8s.io/apiserver/pkg/server/options/encryptionconfig/.*
-          
+
           # The following packages have been migrated to contextual logging.
           # Packages matched here do not have to be listed above because
           # "contextual" implies "structured".
@@ -244,7 +244,7 @@ linters-settings: # please keep this alphabetized
           contextual k8s.io/kubernetes/pkg/kubelet/cadvisor/.*
           contextual k8s.io/kubernetes/pkg/kubelet/oom/.*
           contextual k8s.io/kubernetes/pkg/kubelet/sysctl/.*
-          
+
           # As long as contextual logging is alpha or beta, all WithName, WithValues,
           # NewContext calls have to go through klog. Once it is GA, we can lift
           # this restriction. Whether we then do a global search/replace remains
