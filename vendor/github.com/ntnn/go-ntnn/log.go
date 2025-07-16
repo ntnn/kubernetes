@@ -3,6 +3,7 @@ package ntnn
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -24,13 +25,17 @@ func init() {
 	}
 }
 
-func printer(format string, s ...any) {
-	if !strings.HasSuffix(format, "\n") {
-		format += "\n"
+func printer(msg string) {
+	if !EnableLogs {
+		return
+	}
+
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
 	}
 
 	if LogToFile == "" {
-		_, err := fmt.Printf(Marker+" "+format, s...)
+		_, err := fmt.Print(Marker + " " + msg)
 		Panic(err)
 		return
 	}
@@ -40,22 +45,63 @@ func printer(format string, s ...any) {
 
 	f, err := os.OpenFile(LogToFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	Panic(err)
-	defer f.Close()
+	defer Panic(f.Close())
 
-	_, err = f.WriteString(fmt.Sprintf(format, s...))
+	_, err = f.WriteString(msg)
 	Panic(err)
 }
 
-func Log(s string) {
-	if !EnableLogs {
-		return
-	}
-	printer(s)
+func Log(msg string) {
+	printer(msg)
 }
 
 func Logf(format string, args ...any) {
-	if !EnableLogs {
+	printer(fmt.Sprintf(format, args...))
+}
+
+func caller(skip int) string {
+	_, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		panic("error getting call stack")
+	}
+	return fmt.Sprintf("%s:%d", file, line)
+}
+
+var (
+	lastLog     = map[string]string{}
+	lastLogLock sync.RWMutex
+)
+
+func lastLogChanged(caller, msg string) bool {
+	lastLogLock.RLock()
+	defer lastLogLock.RUnlock()
+	lastMsg, ok := lastLog[caller]
+	return !ok || msg != lastMsg
+}
+
+func lastLogUpdate(caller, msg string) {
+	lastLogLock.Lock()
+	defer lastLogLock.Unlock()
+	lastLog[caller] = msg
+}
+
+func logChanged(skip int, msg string) {
+	c := caller(skip)
+	if !lastLogChanged(c, msg) {
 		return
 	}
-	printer(format, args...)
+	printer(msg)
+	lastLogUpdate(c, msg)
+}
+
+// LogChanged logs a message if the content has changed since the last
+// invocation from the same source.
+func LogChanged(msg string) {
+	logChanged(2, msg)
+}
+
+// LogfChanged logs a formatted message if the content has changed since
+// the last invocation from the same source.
+func LogfChanged(format string, args ...any) {
+	logChanged(2, fmt.Sprintf(format, args...))
 }

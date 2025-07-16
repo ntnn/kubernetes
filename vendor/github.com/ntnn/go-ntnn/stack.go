@@ -23,7 +23,7 @@ func DumpStackToFile(path, preStack, additionalInfo string) {
 
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	Panic(err)
-	defer f.Close()
+	defer Panic(f.Close())
 
 	out := ""
 	if preStack != "" {

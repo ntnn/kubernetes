@@ -19,7 +19,7 @@ func StartProfileServer(profile string) (string, func()) {
 func StartProfileServerAndStall(profile string) {
 	addr, stop := StartProfileServer(profile)
 	defer stop()
-	printer("server available at: %q", addr)
+	Logf("server available at: %q", addr)
 	time.Sleep(99999 * time.Minute)
 }
 

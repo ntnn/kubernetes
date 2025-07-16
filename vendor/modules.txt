@@ -628,7 +628,7 @@ github.com/munnerz/goautoneg
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/ntnn/go-ntnn v0.0.0-20250705190826-4823019efae2
+# github.com/ntnn/go-ntnn v0.0.0-20250716073514-f65c5d6c1dad
 ## explicit; go 1.23.0
 github.com/ntnn/go-ntnn
 # github.com/onsi/ginkgo/v2 v2.21.0
@@ -1242,15 +1242,23 @@ gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# k8s.io/api v0.0.0 => ./staging/src/k8s.io/api
+## explicit; go 1.24.0
 # k8s.io/api v0.33.2 => ./staging/src/k8s.io/api
 ## explicit; go 1.24.0
 # k8s.io/apiextensions-apiserver v0.33.2 => ./staging/src/k8s.io/apiextensions-apiserver
 ## explicit; go 1.24.0
+# k8s.io/apimachinery v0.0.0 => ./staging/src/k8s.io/apimachinery
+## explicit; go 1.24.0
 # k8s.io/apimachinery v0.33.2 => ./staging/src/k8s.io/apimachinery
+## explicit; go 1.24.0
+# k8s.io/apiserver v0.0.0 => ./staging/src/k8s.io/apiserver
 ## explicit; go 1.24.0
 # k8s.io/apiserver v0.33.2 => ./staging/src/k8s.io/apiserver
 ## explicit; go 1.24.0
 # k8s.io/cli-runtime v0.0.0 => ./staging/src/k8s.io/cli-runtime
+## explicit; go 1.24.0
+# k8s.io/client-go v0.0.0 => ./staging/src/k8s.io/client-go
 ## explicit; go 1.24.0
 # k8s.io/client-go v0.33.2 => ./staging/src/k8s.io/client-go
 ## explicit; go 1.24.0
@@ -1258,7 +1266,11 @@ gopkg.in/yaml.v3
 ## explicit; go 1.24.0
 # k8s.io/cluster-bootstrap v0.0.0 => ./staging/src/k8s.io/cluster-bootstrap
 ## explicit; go 1.24.0
+# k8s.io/code-generator v0.0.0 => ./staging/src/k8s.io/code-generator
+## explicit; go 1.24.0
 # k8s.io/code-generator v0.33.2 => ./staging/src/k8s.io/code-generator
+## explicit; go 1.24.0
+# k8s.io/component-base v0.0.0 => ./staging/src/k8s.io/component-base
 ## explicit; go 1.24.0
 # k8s.io/component-base v0.33.2 => ./staging/src/k8s.io/component-base
 ## explicit; go 1.24.0

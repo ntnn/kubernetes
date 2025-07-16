@@ -18,11 +18,11 @@ func UnusedPort() int {
 func DumpToFile(addr, out string) {
 	resp, err := http.Get(addr)
 	Panic(err)
-	defer resp.Body.Close()
+	defer Panic(resp.Body.Close())
 
 	f, err := os.Create(out)
 	Panic(err)
-	defer f.Close()
+	defer Panic(f.Close())
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		Errorf(err, "error writing request body to file")
