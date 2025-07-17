@@ -56,6 +56,8 @@ type EstablishingController struct {
 // NewEstablishingController creates new EstablishingController.
 func NewEstablishingController(crdInformer kcpapiextensionsv1informers.CustomResourceDefinitionClusterInformer,
 	crdClient kcpapiextensionsv1client.CustomResourceDefinitionsClusterGetter) *EstablishingController {
+	ntnn.Logf("establishing crdInformer: %#v", crdInformer)
+	ntnn.LogCallers()
 	ec := &EstablishingController{
 		crdClient: crdClient,
 		crdLister: crdInformer.Lister(),
