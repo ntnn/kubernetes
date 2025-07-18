@@ -13,6 +13,9 @@ require (
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.0.1-0.20250512171935-ebb573a40077
+	github.com/kcp-dev/client-go v0.0.0-20250512163936-91bd85127a38
+	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
