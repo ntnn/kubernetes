@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ntnn/go-ntnn"
+
 	"k8s.io/apimachinery/pkg/util/runtime"
 )
 
@@ -67,7 +69,9 @@ func (g *Group) StartWithContext(ctx context.Context, f func(context.Context)) {
 // Start starts f in a new goroutine in the group.
 func (g *Group) Start(f func()) {
 	g.wg.Add(1)
+	preStack := ntnn.Stack()
 	go func() {
+		ntnn.DumpStackToFile("/Users/I567861/SAPDevelop/code/kcp-work/stack.log", preStack, "")
 		defer g.wg.Done()
 		f()
 	}()
