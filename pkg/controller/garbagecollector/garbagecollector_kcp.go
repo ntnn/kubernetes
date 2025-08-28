@@ -55,11 +55,6 @@ func (gc *GarbageCollector) ResyncMonitors(ctx context.Context, discoveryClient 
 			return nil
 		}
 
-		// Ensure workers are paused to avoid processing events before informers
-		// have resynced.
-		gc.workerLock.Lock()
-		defer gc.workerLock.Unlock()
-
 		// Once we get here, we should not unpause workers until we've successfully synced
 		attempt := 0
 		wait.PollUntilContextCancel(ctx, 100*time.Millisecond, true, func(ctx context.Context) (bool, error) {

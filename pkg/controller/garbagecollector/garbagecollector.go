@@ -74,15 +74,6 @@ type GarbageCollector struct {
 
 	kubeClient       clientset.Interface
 	eventBroadcaster record.EventBroadcaster
-
-	// kcp: Partially reverting e8b1d7dc24713db99808028e0d02bacf6d48e01f.
-	// kcp's GC controller is event-based for now, and without locks we
-	// may miss events during monitor syncs.
-	// TODO(gman0): remove once we move our GC to poll-based.
-	// There are known issues that locking causes:
-	// * https://github.com/kubernetes/kubernetes/issues/101078
-	// * https://github.com/kubernetes/kubernetes/issues/127105
-	workerLock sync.RWMutex
 }
 
 var _ controller.Interface = (*GarbageCollector)(nil)
@@ -209,11 +200,6 @@ func (gc *GarbageCollector) Sync(ctx context.Context, discoveryClient discovery.
 			return
 		}
 
-		// Ensure workers are paused to avoid processing events before informers
-		// have resynced.
-		gc.workerLock.Lock()
-		defer gc.workerLock.Unlock()
-
 		// Once we get here, we should not unpause workers until we've successfully synced
 		attempt := 0
 		wait.PollUntilContextCancel(ctx, 100*time.Millisecond, true, func(ctx context.Context) (bool, error) {
@@ -337,8 +323,6 @@ var namespacedOwnerOfClusterScopedObjectErr = goerrors.New("cluster-scoped objec
 
 func (gc *GarbageCollector) processAttemptToDeleteWorker(ctx context.Context) bool {
 	item, quit := gc.attemptToDelete.Get()
-	gc.workerLock.RLock()
-	defer gc.workerLock.RUnlock()
 	if quit {
 		return false
 	}
@@ -763,8 +747,6 @@ func (gc *GarbageCollector) runAttemptToOrphanWorker(logger klog.Logger) {
 // these steps fail.
 func (gc *GarbageCollector) processAttemptToOrphanWorker(logger klog.Logger) bool {
 	item, quit := gc.attemptToOrphan.Get()
-	gc.workerLock.RLock()
-	defer gc.workerLock.RUnlock()
 	if quit {
 		return false
 	}
