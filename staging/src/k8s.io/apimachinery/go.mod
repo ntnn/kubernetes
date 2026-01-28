@@ -41,6 +41,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kcp-dev/apimachinery/v2 v2.29.1-0.20251209121225-cf3c0b624983
 	github.com/kcp-dev/client-go v0.28.1-0.20260102144548-eb9d6ed22bf7
+	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
