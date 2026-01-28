@@ -171,6 +171,8 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.29.1-0.20251209121225-cf3c0b624983
+	github.com/kcp-dev/client-go v0.28.1-0.20260102144548-eb9d6ed22bf7
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -256,3 +258,7 @@ replace (
 	k8s.io/sample-cli-plugin => ./staging/src/k8s.io/sample-cli-plugin
 	k8s.io/sample-controller => ./staging/src/k8s.io/sample-controller
 )
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/kcp/staging/src/github.com/kcp-dev/apimachinery
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/kcp/staging/src/github.com/kcp-dev/client-go

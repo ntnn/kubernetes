@@ -1,0 +1,50 @@
+8e740151fca UPSTREAM: 120920: Revert: Revert: Clean up CRD conversion code structure
+e0702f1b4bb README
+238b98dede2 UPSTREAM: <carry>: controlplane/apiserver: add miniaggregator
+a8cd5fd5c15 UPSTREAM: <carry>: clusterize controllers
+b1e4db020cf UPSTREAM: <carry>: re-add GC worker locks
+34bb0859aab UPSTREAM: <carry>: Add kcp patchers
+847ff58cf52 UPSTREAM: <carry>: re-generated pkg/controller/resourcequota/resource_quota_controller_patch.go
+321fab7fd6e UPSTREAM: <carry>: re-generated pkg/controller/garbagecollector/garbagecollector_patch.go
+2b3ea3cd169 UPSTREAM: <carry>: storage: etcd cluster key computation
+cd7b72559f2 UPSTREAM: <carry>: clusterize serviceaccounts
+ee61f0797e0 UPSTREAM: <carry>: registry/core/serviceaccount: do not crash without pods
+2bf0b082561 UPSTREAM: <carry>: kube-aggregator
+2e5f7ee81fc UPSTREAM: <carry>: INTERESTING: clusterize admission
+e0224cf8ccc UPSTREAM: <carry>: Clusterize ValidatingAdmissionPolicy admission plugin and policy plugin framework
+08ad20ea440 UPSTREAM: <carry>: clusterize storage hash
+96592e69db1 UPSTREAM: <carry>: endpoints: add Cluster struct for ctx
+37f452454f6 UPSTREAM: <carry>: endpoints/patch: wire openapi for CRD strategic merge patch
+37dc723a29a UPSTREAM: <carry>: storage/etcd3: clusterize
+d8d3f7206f7 UPSTREAM: <carry>: apiserver: partial wildcard metadata request accross identities
+8f5b1a5525e UPSTREAM: <carry>: endpoints: set kcp.io/original-api-version on wildcard partial metadata requests
+2e2c1dd3457 UPSTREAM: <carry>: watch(er/cache): clusterize
+c2e9c8e8b61 UPSTREAM: <carry>: apiserver: split chain into pre and post authz
+5aa6fe8e0ed UPSTREAM: <carry>: apiserver: clusterize listed paths
+7be6aa009a7 UPSTREAM: <carry>: apiserver: clusterize OpenAPI v2
+6b881090563 UPSTREAM: <carry>: clusterize BuiltInAuthenticationOptions
+499c936ae2d UPSTREAM: <carry>: storage: add UseResourceAsPrefixDefault for legacy storage paths
+4ad2b7d5882 UPSTREAM: <carry>: apiextensions-apiserver
+94c1d39341e UPSTREAM: <carry>: cache-server: wire shard name into storage
+a51f76935ef UPSTREAM: <carry>: add client and informer hacks
+4a1015417c5 UPSTREAM: <carry>: controlplane: wire informers and clients
+7b1ced0b3ea UPSTREAM: <carry>: generic cleanup
+b0c0f6640ae UPSTREAM: <carry>: controlplane/apiserver: disable protobuf for loopback
+3aab2f8e68a UPSTREAM: <carry>: pass system:admin clients and informers in generic control plane
+0bbdbd7b397 UPSTREAM: <carry>: remove REST mapper from admission plugins
+588e9265f03 UPSTREAM: <carry>: provide supportedMediaTypes for custom resoure handler patch
+7f2ed9706e0 UPSTREAM: <carry>: prevent NPE if no authorization is set
+2c2133186ad UPSTREAM: <carry>: wrap CRD group into packagePrefix for OpenAPIV3 builder
+36746fb5532 UPSTREAM: <CARRY>: clusterize validatingadmissionpolicystatus controller
+eab25fe6e89 UPSTREAM: <carry>: apiserver cleaning
+81d7df5915b UPSTREAM: <carry>: include cluster name in authz SubjectAccessReview in webhooks
+e0b06397f18 CARRY: split auth/authz chains even more
+007bb5b2e84 UPSTREAM: <carry>: authz: add scoping to default rule resolver
+0a26e015e28 UPSTREAM: <carry>: authz: add warrants to default rule resolver
+304b85b002d UPSTREAM: <carry>: endpoints: wire in ctx to watchListTransformer
+df26ed08178 UPSTREAM: <carry>: Clusterize MutatingAdmissionPolicy admission plugin and policy plugin framework
+70f5e31b77f UPSTREAM: <carry>: don't use --prefers-protobuf with client-gen
+5a72bc81c95 UPSTREAM: <carry>: Add kube feature gate for global service account
+32fd09702ca UPSTREAM: <carry>: Allow pin-dependency to add redirects to local paths
+c599a47cddd UPSTREAM: <carry>: Drop validation-gen
+41c20fca8b3 UPSTREAM: <carry>: Drop merge and replace in x-kubernetes-list/map-type

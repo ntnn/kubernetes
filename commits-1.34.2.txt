@@ -1,0 +1,56 @@
+d38b1bc40fc UPSTREAM: 120920: Revert: Revert: Clean up CRD conversion code structure
+6675174fa6c README
+a3d62cbb9be UPSTREAM: <carry>: controlplane/apiserver: add miniaggregator
+fe470216cbc UPSTREAM: <carry>: clusterize controllers
+7100d0a997a UPSTREAM: <carry>: storage: etcd cluster key computation
+e2232de977b UPSTREAM: <carry>: clusterize serviceaccounts
+b66acc21cae UPSTREAM: <carry>: registry/core/serviceaccount: do not crash without pods
+eeeb754f4ea UPSTREAM: <carry>: INTERESTING: clusterize admission
+50d1d06cd2c UPSTREAM: <carry>: Clusterize ValidatingAdmissionPolicy admission plugin and policy plugin framework
+b743da50f7b UPSTREAM: <carry>: clusterize storage hash
+1d7e7fad282 UPSTREAM: <carry>: endpoints: add Cluster struct for ctx
+d22f10351b8 UPSTREAM: <carry>: endpoints/patch: wire openapi for CRD strategic merge patch
+87ee290d2cc UPSTREAM: <carry>: storage/etcd3: clusterize
+568d3e8d954 UPSTREAM: <carry>: apiserver: partial wildcard metadata request accross identities
+32ef6202925 UPSTREAM: <carry>: endpoints: set kcp.io/original-api-version on wildcard partial metadata requests
+86484fbe806 UPSTREAM: <carry>: watch(er/cache): clusterize
+acd0f8be7ea UPSTREAM: <carry>: apiserver: split chain into pre and post authz
+17f27f48183 UPSTREAM: <carry>: apiserver: clusterize listed paths
+8b3765fa764 UPSTREAM: <carry>: apiserver: clusterize OpenAPI v2
+80857622776 UPSTREAM: <carry>: clusterize BuiltInAuthenticationOptions
+dfc70aaf4a6 UPSTREAM: <carry>: storage: add UseResourceAsPrefixDefault for legacy storage paths
+15447c64ff5 UPSTREAM: <carry>: apiextensions-apiserver
+29859577f0b UPSTREAM: <carry>: cache-server: wire shard name into storage
+50365e54270 UPSTREAM: <carry>: controlplane: wire informers and clients
+82c719e201d UPSTREAM: <carry>: generic cleanup
+a6580349980 UPSTREAM: <carry>: pass system:admin clients and informers in generic control plane
+04de68d9592 UPSTREAM: <carry>: remove REST mapper from admission plugins
+0ffbc0ac7ff UPSTREAM: <carry>: provide supportedMediaTypes for custom resoure handler patch
+6e59d68a27b UPSTREAM: <carry>: prevent NPE if no authorization is set
+726c1203111 UPSTREAM: <carry>: wrap CRD group into packagePrefix for OpenAPIV3 builder
+3c2e936d2ea UPSTREAM: <CARRY>: clusterize validatingadmissionpolicystatus controller
+a583d087453 UPSTREAM: <carry>: apiserver cleaning
+01c33de3df5 UPSTREAM: <carry>: include cluster name in authz SubjectAccessReview in webhooks
+9468abc2896 UPSTREAM: <carry>: split auth/authz chains even more
+c8d1f351258 UPSTREAM: <carry>: authz: add scoping to default rule resolver
+1d3c908cd31 UPSTREAM: <carry>: authz: add warrants to default rule resolver
+1c3d79106f4 UPSTREAM: <carry>: Clusterize MutatingAdmissionPolicy admission plugin and policy plugin framework
+68a7b46b40f UPSTREAM: <carry>: Add kube feature gate for global service account
+d11530165c4 UPSTREAM: <carry>: Allow pin-dependency to add redirects to local paths
+4cab8e24de4 UPSTREAM: <carry>: Drop validation-gen
+467aa93399b UPSTREAM: <carry>: Drop merge and replace in x-kubernetes-list/map-type
+31165a267d9 UPSTREAM: <carry>: Keep system:cluster:* groups
+4b7b5c86d42 UPSTREAM: <carry>: Rename authentication.{kubernetes=>kcp}.io/cluster-name
+1e1cb8a5c37 UPSTREAM: <carry>: Tie global service account test result to feature gate it relies on
+fc3e3604de4 UPSTREAM: <carry>: Add authentication.kcp.io/scopes to service accounts
+ac890f5eccc UPSTREAM: <carry>: Add system:cluster:<cluster> group to effective users
+5995c62a908 UPSTREAM: <carry>: Update pkg/registry/rbac/validation/kcp_test.go
+f47e77ebf36 UPSTREAM: <carry>: Add authorization.kcp.io/cluster-name extra to webhook requests
+d90ff83a296 UPSTREAM: <fixup>: Remove redundant failsafe
+136b0ba1f83 UPSTREAM: <carry>: forward current cluster context in TokenReviews
+edf4fc1b377 UPSTREAM: <carry>: kube-aggregator
+5d5c9ec9ad0 CARRY: Disable protoc support
+6deabab7d93 UPSTREAM: <carry>: add client and informer hacks
+34a93d3d903 UPSTREAM: <carry>: Add kcp patchers
+c4290e3c9b0 UPSTREAM: <carry>: gc & quata patches applied
+71e0f250632 UPSTREAM: <carry>: Clusterize cacher delegator
