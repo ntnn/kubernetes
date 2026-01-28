@@ -73,7 +73,6 @@ func newPodCertificateRequests(c *CertificatesV1alpha1Client, namespace string) 
 			func() *certificatesv1alpha1.PodCertificateRequestList {
 				return &certificatesv1alpha1.PodCertificateRequestList{}
 			},
-			gentype.PrefersProtobuf[*certificatesv1alpha1.PodCertificateRequest](),
 		),
 	}
 }
