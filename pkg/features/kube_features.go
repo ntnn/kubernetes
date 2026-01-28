@@ -2087,10 +2087,6 @@ var defaultVersionedKubernetesFeatureGates = map[featuregate.Feature]featuregate
 		{Version: version.MustParse("1.32"), Default: false, PreRelease: featuregate.Alpha},
 	},
 
-	DisableCPUQuotaWithExclusiveCPUs: {
-		{Version: version.MustParse("1.33"), Default: true, PreRelease: featuregate.Beta},
-	},
-
 	GlobalServiceAccount: {
 		{Version: version.MustParse("1.31"), Default: false, PreRelease: featuregate.Alpha},
 	},
