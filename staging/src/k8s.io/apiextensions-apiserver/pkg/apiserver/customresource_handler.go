@@ -17,9 +17,9 @@ limitations under the License.
 package apiserver
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -29,11 +29,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 	"github.com/davecgh/go-spew/spew"
 	kcpapiextensionsv1informers "github.com/kcp-dev/client-go/apiextensions/informers/apiextensions/v1"
 	kcpapiextensionsv1listers "github.com/kcp-dev/client-go/apiextensions/listers/apiextensions/v1"
 	"github.com/kcp-dev/logicalcluster/v3"
+	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	apiextensionshelpers "k8s.io/apiextensions-apiserver/pkg/apihelpers"
 	apiextensionsinternal "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -96,7 +96,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kube-openapi/pkg/spec3"
 	"k8s.io/kube-openapi/pkg/validation/spec"
-	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 )
 
 // KcpValidateNameAnnotationKey is the annotation key used to indicate that a CRD should be validated
