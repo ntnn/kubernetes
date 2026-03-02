@@ -134,13 +134,24 @@ func Claims(sa core.ServiceAccount, pod *core.Pod, secret *core.Secret, node *co
 }
 
 func NewValidator(getter ServiceAccountTokenClusterGetter) Validator[privateClaims] {
+	return NewValidatorWithLookup(getter, true)
+}
+
+// NewValidatorWithLookup creates a validator with configurable lookup behavior.
+// When lookup is false, the validator skips verifying that the service account,
+// secret, pod, and node still exist. This is useful in multi-shard environments
+// where the validating server may not have access to the workspace containing the SA.
+// KCP carry patch: respect --service-account-lookup=false for JWT tokens.
+func NewValidatorWithLookup(getter ServiceAccountTokenClusterGetter, lookup bool) Validator[privateClaims] {
 	return &validator{
 		getter: getter,
+		lookup: lookup,
 	}
 }
 
 type validator struct {
 	getter ServiceAccountTokenClusterGetter
+	lookup bool
 }
 
 var _ = Validator[privateClaims](&validator{})
@@ -237,12 +248,6 @@ func (v *validator) Validate(ctx context.Context, _ string, public *jwt.Claims, 
 	var nodeName, nodeUID string
 	if noderef != nil {
 		switch {
-		case podref != nil:
-			if utilfeature.DefaultFeatureGate.Enabled(features.ServiceAccountTokenPodNodeInfo) {
-				// for pod-bound tokens, just extract the node claims
-				nodeName = noderef.Name
-				nodeUID = noderef.UID
-			}
 		case podref == nil:
 			if !utilfeature.DefaultFeatureGate.Enabled(features.ServiceAccountTokenNodeBindingValidation) {
 				klog.V(4).Infof("ServiceAccount token is bound to a Node object, but the node bound token validation feature is disabled")
