@@ -134,13 +134,24 @@ func Claims(sa core.ServiceAccount, pod *core.Pod, secret *core.Secret, node *co
 }
 
 func NewValidator(getter ServiceAccountTokenClusterGetter) Validator[privateClaims] {
+	return NewValidatorWithLookup(getter, true)
+}
+
+// NewValidatorWithLookup creates a validator with configurable lookup behavior.
+// When lookup is false, the validator skips verifying that the service account,
+// secret, pod, and node still exist. This is useful in multi-shard environments
+// where the validating server may not have access to the workspace containing the SA.
+// KCP carry patch: respect --service-account-lookup=false for JWT tokens.
+func NewValidatorWithLookup(getter ServiceAccountTokenClusterGetter, lookup bool) Validator[privateClaims] {
 	return &validator{
 		getter: getter,
+		lookup: lookup,
 	}
 }
 
 type validator struct {
 	getter ServiceAccountTokenClusterGetter
+	lookup bool
 }
 
 var _ = Validator[privateClaims](&validator{})
@@ -181,6 +192,28 @@ func (v *validator) Validate(ctx context.Context, _ string, public *jwt.Claims, 
 	podref := private.Kubernetes.Pod
 	noderef := private.Kubernetes.Node
 	secref := private.Kubernetes.Secret
+
+	// KCP carry patch: skip lookups when v.lookup is false.
+	// This is controlled by --service-account-lookup flag and is needed in multi-shard
+	// environments where the validating server may not have access to the workspace
+	// containing the service account.
+	if !v.lookup {
+		// When lookup is disabled, extract pod/node info from claims without verification.
+		// This is needed for multi-shard environments where the validating server
+		// may not have access to the workspace containing the service account.
+		var podName, podUID string
+		if podref != nil {
+			podName = podref.Name
+			podUID = podref.UID
+		}
+		var nodeName, nodeUID string
+		if noderef != nil {
+			nodeName = noderef.Name
+			nodeUID = noderef.UID
+		}
+		return v.finalize(ctx, "", public, private, nowTime, podName, podUID, nodeName, nodeUID)
+	}
+
 	// Make sure service account still exists (name and UID)
 	serviceAccount, err := v.getter.Cluster(clusterName).GetServiceAccount(ctx, namespace, saref.Name)
 	if err != nil {
@@ -267,6 +300,10 @@ func (v *validator) Validate(ctx context.Context, _ string, public *jwt.Claims, 
 		}
 	}
 
+	return v.finalize(ctx, "", public, private, nowTime, podName, podUID, nodeName, nodeUID)
+}
+
+func (v *validator) finalize(ctx context.Context, _ string, public *jwt.Claims, private *privateClaims, nowTime time.Time, podName, podUID, nodeName, nodeUID string) (*apiserverserviceaccount.ServiceAccountInfo, error) {
 	// Check special 'warnafter' field for projected service account token transition.
 	warnafter := private.Kubernetes.WarnAfter
 	if warnafter != nil && *warnafter != 0 {
