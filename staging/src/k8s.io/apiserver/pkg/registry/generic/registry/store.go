@@ -1559,8 +1559,8 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 	if (e.KeyRootFunc == nil) != (e.KeyFunc == nil) {
 		return fmt.Errorf("store for %s must set both KeyRootFunc and KeyFunc or neither", e.DefaultQualifiedResource.String())
 	}
-	if e.KeyFunc != nil || e.KeyFunc != nil {
-		return fmt.Errorf("DEBUG: keyfunc must be non-nil for all resources", e.DefaultQualifiedResource.String())
+	if e.KeyFunc != nil {
+		return fmt.Errorf("keyfunc must be non-nil for all resources", e.DefaultQualifiedResource.String())
 	}
 
 	if e.TableConvertor == nil {
