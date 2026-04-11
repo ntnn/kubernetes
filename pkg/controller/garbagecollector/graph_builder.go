@@ -452,6 +452,7 @@ func (gb *GraphBuilder) addDependentToOwners(logger klog.Logger, n *node, owners
 				identity: objectReference{
 					OwnerReference: ownerReferenceCoordinates(owner),
 					Namespace:      n.identity.Namespace,
+					Cluster:        n.identity.Cluster,
 				},
 				dependents: make(map[*node]struct{}),
 				virtual:    true,
@@ -529,6 +530,7 @@ func (gb *GraphBuilder) reportInvalidNamespaceOwnerRef(n *node, invalidOwnerUID 
 			UID:        invalidOwnerRef.UID,
 		},
 		Namespace: n.identity.Namespace,
+		Cluster:   n.identity.Cluster,
 	}
 	gb.eventRecorder.Eventf(ref, v1.EventTypeWarning, "OwnerRefInvalidNamespace", "ownerRef %s does not exist in namespace %q", invalidIdentity, n.identity.Namespace)
 }
@@ -699,6 +701,7 @@ func identityFromEvent(event *event, accessor metav1.Object) objectReference {
 			Name:       accessor.GetName(),
 		},
 		Namespace: accessor.GetNamespace(),
+		Cluster:   logicalcluster.From(accessor),
 	}
 }
 
