@@ -97,6 +97,10 @@ type Config struct {
 
 	// WatchListPageSize is the requested chunk size of initial and relist watch lists.
 	WatchListPageSize int64
+
+	// KeyFunction, if set, overrides the default key function (DeletionHandlingMetaNamespaceKeyFunc)
+	// used by the reflector for generating object keys.
+	KeyFunction KeyFunc
 }
 
 // ShouldResyncFunc is a type of function that indicates if a reflector should perform a
@@ -184,6 +188,7 @@ func (c *controller) RunWithContext(ctx context.Context) {
 			MinWatchTimeout: c.config.MinWatchTimeout,
 			TypeDescription: c.config.ObjectDescription,
 			Clock:           c.clock,
+			KeyFunction:     c.config.KeyFunction,
 		},
 	)
 	r.ShouldResync = c.config.ShouldResync
@@ -398,6 +403,18 @@ func DeletionHandlingMetaNamespaceKeyFunc(obj interface{}) (string, error) {
 	return MetaNamespaceKeyFunc(obj)
 }
 
+// DeletionHandlingKeyFunc wraps a KeyFunc to handle DeletedFinalStateUnknown objects.
+// If the object is a DeletedFinalStateUnknown, the key is returned directly.
+// Otherwise, the provided KeyFunc is called.
+func DeletionHandlingKeyFunc(keyFunc KeyFunc) KeyFunc {
+	return func(obj interface{}) (string, error) {
+		if d, ok := obj.(DeletedFinalStateUnknown); ok {
+			return d.Key, nil
+		}
+		return keyFunc(obj)
+	}
+}
+
 // DeletionHandlingObjectToName checks for
 // DeletedFinalStateUnknown objects before calling
 // ObjectToName.
@@ -455,6 +472,13 @@ type InformerOptions struct {
 	// InformerMetricsProvider is the metrics provider for the informer.
 	// If not set, metrics will be no-ops.
 	InformerMetricsProvider InformerMetricsProvider
+
+	// KeyFunction, if set, overrides the default key function (MetaNamespaceKeyFunc)
+	// used for generating object keys. This should be the base key function without
+	// deletion handling - the deletion-handling wrapper will be applied automatically
+	// where needed (stores, reflector). For FIFO queues, the base function is used directly.
+	// Optional - if unset, MetaNamespaceKeyFunc is used.
+	KeyFunction KeyFunc
 }
 
 // NewInformerWithOptions returns a Store and a controller for populating the store
@@ -462,13 +486,17 @@ type InformerOptions struct {
 // Store for Get/List operations; Add/Modify/Deletes will cause the event
 // notifications to be faulty.
 func NewInformerWithOptions(options InformerOptions) (Store, Controller) {
+	storeKeyFunc := DeletionHandlingMetaNamespaceKeyFunc
+	if options.KeyFunction != nil {
+		storeKeyFunc = DeletionHandlingKeyFunc(options.KeyFunction)
+	}
 	var clientState Store
 	if options.Indexers == nil {
-		clientState = NewStore(DeletionHandlingMetaNamespaceKeyFunc, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider))
+		clientState = NewStore(storeKeyFunc, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider))
 	} else {
-		clientState = NewIndexer(DeletionHandlingMetaNamespaceKeyFunc, options.Indexers, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider))
+		clientState = NewIndexer(storeKeyFunc, options.Indexers, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider))
 	}
-	return clientState, newInformer(clientState, options, DeletionHandlingMetaNamespaceKeyFunc)
+	return clientState, newInformer(clientState, options, storeKeyFunc)
 }
 
 // NewInformer returns a Store and a controller for populating the store
@@ -493,16 +521,14 @@ func NewInformer(
 	resyncPeriod time.Duration,
 	h ResourceEventHandler,
 ) (Store, Controller) {
-	// This will hold the client state, as we know it.
-	clientState := NewStore(DeletionHandlingMetaNamespaceKeyFunc)
-
 	options := InformerOptions{
 		ListerWatcher: lw,
 		ObjectType:    objType,
 		Handler:       h,
 		ResyncPeriod:  resyncPeriod,
+		KeyFunction:   DeletionHandlingMetaNamespaceKeyFunc,
 	}
-	return clientState, newInformer(clientState, options, DeletionHandlingMetaNamespaceKeyFunc)
+	return NewInformerWithOptions(options)
 }
 
 // NewIndexerInformer returns an Indexer and a Controller for populating the index
@@ -814,10 +840,11 @@ func newInformer(clientState Store, options InformerOptions, keyFunc KeyFunc) Co
 	if options.Logger != nil {
 		logger = *options.Logger
 	}
-	logger, fifo := newQueueFIFO(logger, options.ObjectType, clientState, options.Transform, options.Identifier, options.InformerMetricsProvider)
+	logger, fifo := newQueueFIFO(logger, options.ObjectType, clientState, options.Transform, options.Identifier, options.InformerMetricsProvider, options.KeyFunction)
 
 	cfg := &Config{
 		Queue:            fifo,
+		KeyFunction:      keyFunc,
 		ListerWatcher:    options.ListerWatcher,
 		ObjectType:       options.ObjectType,
 		FullResyncPeriod: options.ResyncPeriod,
@@ -844,12 +871,15 @@ func newInformer(clientState Store, options InformerOptions, keyFunc KeyFunc) Co
 // It returns the FIFO and the logger used by the FIFO.
 // That logger includes the name used for the FIFO,
 // in contrast to the logger which was passed in.
-func newQueueFIFO(logger klog.Logger, objectType any, clientState Store, transform TransformFunc, identifier InformerNameAndResource, metricsProvider InformerMetricsProvider) (klog.Logger, Queue) {
+func newQueueFIFO(logger klog.Logger, objectType any, clientState Store, transform TransformFunc, identifier InformerNameAndResource, metricsProvider InformerMetricsProvider, keyFunc KeyFunc) (klog.Logger, Queue) {
+	if keyFunc == nil {
+		keyFunc = MetaNamespaceKeyFunc
+	}
 	if clientgofeaturegate.FeatureGates().Enabled(clientgofeaturegate.InOrderInformers) {
 		options := RealFIFOOptions{
 			Logger:          &logger,
 			Name:            fmt.Sprintf("RealFIFO %T", objectType),
-			KeyFunction:     MetaNamespaceKeyFunc,
+			KeyFunction:     keyFunc,
 			Transformer:     transform,
 			Identifier:      identifier,
 			MetricsProvider: metricsProvider,
@@ -869,6 +899,7 @@ func newQueueFIFO(logger klog.Logger, objectType any, clientState Store, transfo
 		f := NewDeltaFIFOWithOptions(DeltaFIFOOptions{
 			Logger:                &logger,
 			Name:                  fmt.Sprintf("DeltaFIFO %T", objectType),
+			KeyFunction:           keyFunc,
 			KnownObjects:          clientState,
 			EmitDeltaTypeReplaced: true,
 			Transformer:           transform,

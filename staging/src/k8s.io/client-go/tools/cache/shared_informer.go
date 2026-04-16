@@ -319,11 +319,16 @@ func NewSharedIndexInformer(lw ListerWatcher, exampleObject runtime.Object, defa
 func NewSharedIndexInformerWithOptions(lw ListerWatcher, exampleObject runtime.Object, options SharedIndexInformerOptions) SharedIndexInformer {
 	realClock := &clock.RealClock{}
 
+	storeKeyFunc := DeletionHandlingMetaNamespaceKeyFunc
+	if options.KeyFunction != nil {
+		storeKeyFunc = DeletionHandlingKeyFunc(options.KeyFunction)
+	}
+
 	processor := &sharedProcessor{clock: realClock}
 	processor.listenersRCond = sync.NewCond(processor.listenersLock.RLocker())
 
 	return &sharedIndexInformer{
-		indexer:                         NewIndexer(DeletionHandlingMetaNamespaceKeyFunc, options.Indexers, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider)),
+		indexer:                         NewIndexer(storeKeyFunc, options.Indexers, WithStoreMetrics(options.Identifier, options.InformerMetricsProvider)),
 		processor:                       processor,
 		synced:                          make(chan struct{}),
 		listerWatcher:                   lw,
@@ -335,7 +340,8 @@ func NewSharedIndexInformerWithOptions(lw ListerWatcher, exampleObject runtime.O
 		cacheMutationDetector:           NewCacheMutationDetector(fmt.Sprintf("%T", exampleObject)),
 		identifier:                      options.Identifier,
 		informerMetricsProvider:         options.InformerMetricsProvider,
-		keyFunc:                         DeletionHandlingMetaNamespaceKeyFunc,
+		keyFunc:                         storeKeyFunc,
+		baseKeyFunc:                     options.KeyFunction,
 	}
 }
 
@@ -359,6 +365,15 @@ type SharedIndexInformerOptions struct {
 	// InformerMetricsProvider is the metrics provider for the FIFO queue.
 	// If not set, metrics will be no-ops.
 	InformerMetricsProvider InformerMetricsProvider
+
+	// KeyFunction, if set, overrides the default key function (MetaNamespaceKeyFunc)
+	// used for generating object keys. This should be the base key function without
+	// deletion handling - the deletion-handling wrapper will be applied automatically
+	// where needed (stores, reflector). For FIFO queues, the base function is used directly.
+	// This is useful for multi-cluster scenarios where the default namespace/name key
+	// is insufficient and a cluster-aware key is needed.
+	// Optional - if unset, MetaNamespaceKeyFunc is used.
+	KeyFunction KeyFunc
 }
 
 // InformerSynced is a function that can be used to determine if an informer has synced.  This is useful for determining if caches have synced.
@@ -633,8 +648,12 @@ type sharedIndexInformer struct {
 	// informerMetricsProvider is the metrics provider for the FIFO queue.
 	informerMetricsProvider InformerMetricsProvider
 
-	// keyFunc is called when processing deltas by the underlying process function.
+	// keyFunc is the deletion-handling key function used when processing deltas.
 	keyFunc KeyFunc
+
+	// baseKeyFunc is the base key function (without deletion handling) used for FIFO queues
+	// and the reflector. If nil, MetaNamespaceKeyFunc is used.
+	baseKeyFunc KeyFunc
 }
 
 // dummyController hides the fact that a SharedInformer is different from a dedicated one
@@ -729,7 +748,7 @@ func (s *sharedIndexInformer) RunWithContext(ctx context.Context) {
 		s.startedLock.Lock()
 		defer s.startedLock.Unlock()
 
-		logger, fifo := newQueueFIFO(logger, s.objectType, s.indexer, s.transform, s.identifier, s.informerMetricsProvider)
+		logger, fifo := newQueueFIFO(logger, s.objectType, s.indexer, s.transform, s.identifier, s.informerMetricsProvider, s.baseKeyFunc)
 
 		cfg := &Config{
 			Queue:             fifo,
@@ -738,6 +757,7 @@ func (s *sharedIndexInformer) RunWithContext(ctx context.Context) {
 			ObjectDescription: s.objectDescription,
 			FullResyncPeriod:  s.resyncCheckPeriod,
 			ShouldResync:      s.processor.shouldResync,
+			KeyFunction:       s.keyFunc,
 
 			Process: func(obj interface{}, isInInitialList bool) error {
 				return s.handleDeltas(logger, obj, isInInitialList)

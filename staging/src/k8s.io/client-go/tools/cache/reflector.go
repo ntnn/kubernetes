@@ -159,6 +159,9 @@ type Reflector struct {
 	ShouldResync func() bool
 	// MaxInternalErrorRetryDuration defines how long we should retry internal errors returned by watch.
 	MaxInternalErrorRetryDuration time.Duration
+	// keyFunction is used to generate keys for objects stored in the temporary store
+	// during watchList operations. If not set, DeletionHandlingMetaNamespaceKeyFunc is used.
+	keyFunction KeyFunc
 	// useWatchList if turned on instructs the reflector to open a stream to bring data from the API server.
 	// Streaming has the primary advantage of using fewer server's resources to fetch data.
 	//
@@ -281,6 +284,12 @@ type ReflectorOptions struct {
 	// DelayWithReset(clock, resetDuration) will be called on it to create the delay function.
 	// TODO(#136943): Expose this configuration through SharedInformerFactory.
 	Backoff *wait.Backoff
+
+	// KeyFunction, if set, overrides the default key function (DeletionHandlingMetaNamespaceKeyFunc)
+	// used for generating object keys in the reflector's temporary store during watchList operations.
+	// This should be the deletion-handling variant of the key function.
+	// Optional - if unset, DeletionHandlingMetaNamespaceKeyFunc is used.
+	KeyFunction KeyFunc
 }
 
 // NewReflectorWithOptions creates a new Reflector object which will keep the
@@ -325,6 +334,11 @@ func NewReflectorWithOptions(lw ListerWatcher, expectedType interface{}, store R
 		}
 	}
 
+	keyFunction := options.KeyFunction
+	if keyFunction == nil {
+		keyFunction = DeletionHandlingMetaNamespaceKeyFunc
+	}
+
 	r := &Reflector{
 		name:              options.Name,
 		resyncPeriod:      options.ResyncPeriod,
@@ -337,6 +351,7 @@ func NewReflectorWithOptions(lw ListerWatcher, expectedType interface{}, store R
 		clock:             reflectorClock,
 		watchErrorHandler: WatchErrorHandlerWithContext(DefaultWatchErrorHandler),
 		expectedType:      reflect.TypeOf(expectedType),
+		keyFunction:       keyFunction,
 	}
 
 	if r.name == "" {
@@ -846,7 +861,7 @@ func (r *Reflector) watchList(ctx context.Context) (watch.Interface, error) {
 
 		resourceVersion = ""
 		lastKnownRV := r.rewatchResourceVersion()
-		temporaryStore = NewStore(DeletionHandlingMetaNamespaceKeyFunc, storeOpts...)
+		temporaryStore = NewStore(r.keyFunction, storeOpts...)
 		// TODO(#115478): large "list", slow clients, slow network, p&f
 		//  might slow down streaming and eventually fail.
 		//  maybe in such a case we should retry with an increased timeout?
