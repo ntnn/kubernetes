@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	go.opentelemetry.io/otel v1.41.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
@@ -19,3 +20,9 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 )
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/apimachinery
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/client-go
+
+replace github.com/kcp-dev/code-generator/v3 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/code-generator

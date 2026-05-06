@@ -17,9 +17,16 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/apimachinery
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/client-go
+
+replace github.com/kcp-dev/code-generator/v3 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/code-generator

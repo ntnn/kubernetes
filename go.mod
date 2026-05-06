@@ -170,7 +170,6 @@ require (
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/logicalcluster/v3 v3.0.5 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -256,3 +255,9 @@ replace (
 	k8s.io/sample-controller => ./staging/src/k8s.io/sample-controller
 	k8s.io/streaming => ./staging/src/k8s.io/streaming
 )
+
+replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/apimachinery
+
+replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/client-go
+
+replace github.com/kcp-dev/code-generator/v3 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/code-generator
