@@ -119,6 +119,10 @@ func (s *hack) WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool {
 	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
 }
 
+func (s *hack) WaitForCacheSyncWithContext(_ context.Context) cache.SyncResult {
+	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
+}
+
 func (s *hack) Admissionregistration() admissionregistration.Interface {
 	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
 }
