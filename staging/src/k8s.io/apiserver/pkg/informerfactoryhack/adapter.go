@@ -19,6 +19,7 @@ limitations under the License.
 package informerfactoryhack
 
 import (
+	"context"
 	"reflect"
 
 	kcpkubernetesinformers "github.com/kcp-dev/client-go/informers"
@@ -83,6 +84,10 @@ func (s *hack) Resource() resource.Interface {
 }
 
 func (s *hack) Start(stopCh <-chan struct{}) {
+	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
+}
+
+func (s *hack) StartWithContext(_ context.Context) {
 	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
 }
 
