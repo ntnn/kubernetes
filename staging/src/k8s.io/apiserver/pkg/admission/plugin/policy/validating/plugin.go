@@ -89,7 +89,7 @@ func (a *Plugin) SetManifestLoaders(loaders *initializer.ManifestLoaders) {
 	a.SetStaticSourceFactory(func(manifestsDir string) (generic.ReloadableSource[PolicyHook], error) {
 		staticSource := source.NewStaticPolicySource(manifestsDir, a.GetAPIServerID(),
 			func(p *v1.ValidatingAdmissionPolicy) (Validator, error) {
-				v := compilePolicy(p)
+				v := CompilePolicy(p)
 				if err := v.CompileError(); err != nil {
 					return nil, err
 				}
