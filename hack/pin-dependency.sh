@@ -105,7 +105,9 @@ fi
 # Propagate pinned version to staging repos
 for repo in $(kube::util::list_staging_repos); do
   pushd "staging/src/k8s.io/${repo}" >/dev/null 2>&1
-    [ -n "${rev}" ] && go mod edit -require "${dep}@${rev}"
+    if [ -n "${rev}" ]; then
+        go mod edit -require "${dep}@${rev}"
+    fi
 
     # When replacing with a fork, always add a replace statement in all go.mod
     # files (not just the root of the staging repos!) because there might be
