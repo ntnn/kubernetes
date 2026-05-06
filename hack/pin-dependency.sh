@@ -75,6 +75,7 @@ if [ -d "$replacement" ]; then
     replacement="$dep"
 fi
 
+rev=""
 if [ -n "$sha" ]; then
     # Find the resolved version before trying to use it.
     echo "Running: go mod download ${replacement}@${sha}"
@@ -104,9 +105,7 @@ fi
 # Propagate pinned version to staging repos
 for repo in $(kube::util::list_staging_repos); do
   pushd "staging/src/k8s.io/${repo}" >/dev/null 2>&1
-    if [ -n "$rev" ]; then
-        go mod edit -require "${dep}@${rev}"
-    fi
+    [ -n "${rev}" ] && go mod edit -require "${dep}@${rev}"
 
     # When replacing with a fork, always add a replace statement in all go.mod
     # files (not just the root of the staging repos!) because there might be
