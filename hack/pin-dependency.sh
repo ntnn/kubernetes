@@ -55,7 +55,7 @@ case ${dep} in
         ;;
 esac
 
-if [[ -z "${dep}" || -z "${replacement}" || -z "${sha}" ]]; then
+if [[ -z "${dep}" || -z "${replacement}" ]]; then
   echo "Usage:"
   echo "  hack/pin-dependency.sh \$MODULE[=\$REPLACEMENT] \$SHA-OR-TAG"
   echo ""
