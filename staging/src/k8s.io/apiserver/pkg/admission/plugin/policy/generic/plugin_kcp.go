@@ -15,7 +15,7 @@ func (c *Plugin[H]) SetInformerFactory(f informers.SharedInformerFactory) {
 }
 
 func (c *Plugin[H]) SetSourceFactory(s sourceFactory[H]) {
-	c.sourceFactory = s
+	c.apiSourceFactory = s
 }
 
 func (c *Plugin[H]) SetClusterName(clusterName logicalcluster.Name) {
