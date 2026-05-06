@@ -257,7 +257,7 @@ func (c *Plugin[H]) ValidateInitialization() error {
 
 	// Construct source once, avoiding overwriting if already set.
 	if c.source == nil {
-		apiSource = c.apiSourceFactory(c.informerFactory, c.client, c.dynamicClient, c.restMapper, c.clusterName)
+		apiSource := c.apiSourceFactory(c.informerFactory, c.client, c.dynamicClient, c.restMapper, c.clusterName)
 
 		if len(c.staticManifestsDir) > 0 {
 			if c.staticSourceFactory == nil {
