@@ -86,6 +86,10 @@ func (s *hack) Start(stopCh <-chan struct{}) {
 	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
 }
 
+func (s *hack) InformerName() *cache.InformerName {
+	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
+}
+
 func (s *hack) InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer {
 	panic("programmer error: using a cluster-unaware informer factory, need to cast this to use the cluster-aware one!")
 }
