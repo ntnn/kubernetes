@@ -7,7 +7,7 @@ go 1.26.0
 godebug default=go1.26
 
 require (
-	k8s.io/apimachinery v0.0.0
+	k8s.io/apimachinery v0.36.0
 	k8s.io/cloud-provider v0.0.0
 	k8s.io/controller-manager v0.0.0
 )
@@ -16,7 +16,6 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
@@ -26,7 +25,7 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/component-base v0.0.0 // indirect
+	k8s.io/component-base v0.36.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
@@ -36,6 +35,8 @@ require (
 )
 
 replace (
+	github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/apimachinery
+	github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/client-go
 	k8s.io/api => ../api
 	k8s.io/apimachinery => ../apimachinery
 	k8s.io/apiserver => ../apiserver
@@ -47,9 +48,3 @@ replace (
 	k8s.io/kms => ../kms
 	k8s.io/streaming => ../streaming
 )
-
-replace github.com/kcp-dev/apimachinery/v2 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/apimachinery
-
-replace github.com/kcp-dev/client-go => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/client-go
-
-replace github.com/kcp-dev/code-generator/v3 => /Users/I567861/SAPDevelop/code/github.com/ntnn/kcp-kubernetes-patches/kcp/staging/src/github.com/kcp-dev/code-generator
