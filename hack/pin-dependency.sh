@@ -75,20 +75,22 @@ if [ -d "$replacement" ]; then
     replacement="$dep"
 fi
 
-# Find the resolved version before trying to use it.
-echo "Running: go mod download ${replacement}@${sha}"
-if meta=$(go mod download -json "${replacement}@${sha}"); then
-    rev=$(echo "${meta}" | jq -r ".Version")
-else
-    error=$(echo "${meta}" | jq -r ".Error")
-    echo "Download failed: ${error}" >&2
-    exit 1
-fi
-echo "Resolved to ${replacement}@${rev}"
+if [ -n "$sha" ]; then
+    # Find the resolved version before trying to use it.
+    echo "Running: go mod download ${replacement}@${sha}"
+    if meta=$(go mod download -json "${replacement}@${sha}"); then
+        rev=$(echo "${meta}" | jq -r ".Version")
+    else
+        error=$(echo "${meta}" | jq -r ".Error")
+        echo "Download failed: ${error}" >&2
+        exit 1
+    fi
+    echo "Resolved to ${replacement}@${rev}"
 
-# Add the require directive
-echo "Running: go mod edit -require ${dep}@${rev}"
-go mod edit -require "${dep}@${rev}"
+    # Add the require directive
+    echo "Running: go mod edit -require ${dep}@${rev}"
+    go mod edit -require "${dep}@${rev}"
+fi
 
 # Add the replace directive
 if [ "${replacement}" != "${dep}" ]; then
@@ -102,7 +104,9 @@ fi
 # Propagate pinned version to staging repos
 for repo in $(kube::util::list_staging_repos); do
   pushd "staging/src/k8s.io/${repo}" >/dev/null 2>&1
-    go mod edit -require "${dep}@${rev}"
+    if [ -n "$rev" ]; then
+        go mod edit -require "${dep}@${rev}"
+    fi
 
     # When replacing with a fork, always add a replace statement in all go.mod
     # files (not just the root of the staging repos!) because there might be
