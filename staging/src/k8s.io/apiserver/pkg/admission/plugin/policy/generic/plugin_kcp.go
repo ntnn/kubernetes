@@ -14,7 +14,7 @@ func (c *Plugin[H]) SetInformerFactory(f informers.SharedInformerFactory) {
 	c.informerFactory = f
 }
 
-func (c *Plugin[H]) SetSourceFactory(s sourceFactory[H]) {
+func (c *Plugin[H]) SetSourceFactory(s apiSourceFactory[H]) {
 	c.apiSourceFactory = s
 }
 
