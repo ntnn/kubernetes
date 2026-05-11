@@ -12,6 +12,9 @@ require (
 )
 
 require (
+	github.com/kcp-dev/apimachinery/v2 v2.31.2-0.20260505083940-abda469632ba
+	github.com/kcp-dev/client-go v0.28.1-0.20260511140521-487de9552c40
+	github.com/kcp-dev/logicalcluster/v3 v3.0.5
 	go.opentelemetry.io/otel v1.41.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
